@@ -1,31 +1,34 @@
-import { ICartItem } from '../types';
+import { ICartItem } from '../types/cart';
 import { EventEmitter } from '../components/base/events';
 
 export class CartModel {
-    protected items: Map<string, ICartItem> = new Map();
+    protected items: ICartItem[] = [];
 
     constructor(protected events: EventEmitter) {}
 
-    add(item: ICartItem) {
-        this.items.set(item.id, item);
-        this.emitChange();
-    }
-
-    remove(id: string) {
-        this.items.delete(id);
-        this.emitChange();
-    }
-
-    clear() {
-        this.items.clear();
-        this.emitChange();
-    }
-
     getItems(): ICartItem[] {
-        return Array.from(this.items.values());
+        return this.items;
     }
 
-    protected emitChange() {
+    add(item: ICartItem): void {
+        const existing = this.items.find((i) => i.id === item.id);
+        if (existing) {
+            existing.quantity += 1;
+        } else {
+            this.items.push({ ...item, quantity: 1 });
+        }
+        this.events.emit('cart:change', this.getItems());
+    }
+
+    remove(id: string): void {
+        const existing = this.items.find((i) => i.id === id);
+        if (!existing) return;
+
+        if (existing.quantity > 1) {
+            existing.quantity -= 1;
+        } else {
+            this.items = this.items.filter((i) => i.id !== id);
+        }
         this.events.emit('cart:change', this.getItems());
     }
 }

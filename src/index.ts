@@ -7,16 +7,13 @@ import { CatalogView } from './components/views/CatalogView';
 import { CartView } from './components/views/CartView';
 import { UserView } from './components/views/UserView';
 import { ICartItem } from './types/cart';
-import { IProduct } from './types/product';
 import { products } from './utils/products';
 
-// Инициализация EventEmitter и моделей
 const events = new EventEmitter();
 const catalogModel = new CatalogModel(events);
 const cartModel = new CartModel(events);
 const userModel = new UserModel(events);
 
-// View
 const catalogElement = document.querySelector('.gallery') as HTMLElement;
 const cartElement = document.querySelector('.basket__list') as HTMLElement;
 const userForm = document.querySelector('form') as HTMLFormElement;
@@ -39,100 +36,85 @@ const userView = new UserView(userForm);
 events.on('cart:change', (items: ICartItem[]) => cartView.render(items));
 
 catalogModel.setProducts(products);
+catalogView.render(products);
 
-// Галерея товаров
-function renderCatalog(products: IProduct[]): void {
-    const gallery = document.querySelector('.gallery') as HTMLElement;
-    const template = document.getElementById('card-catalog') as HTMLTemplateElement;
-    gallery.innerHTML = '';
+// ---------- Открытие модалки карточки ----------
+const gallery = document.querySelector('.gallery') as HTMLElement;
+const modalContent = document.querySelector('#modal-container .modal__content') as HTMLElement;
+const templatePreview = document.querySelector('#card-preview') as HTMLTemplateElement;
 
-    products.forEach(product => {
-        const card = template.content.cloneNode(true) as HTMLElement;
-        const categoryEl = card.querySelector('.card__category') as HTMLElement;
-        const titleEl = card.querySelector('.card__title') as HTMLElement;
-        const priceEl = card.querySelector('.card__price') as HTMLElement;
+gallery.addEventListener('click', (event) => {
+    const target = (event.target as HTMLElement).closest('.gallery__item') as HTMLElement;
+    if (!target) return;
 
-        categoryEl.textContent = product.category;
-        titleEl.textContent = product.title;
-        priceEl.textContent = `${product.price} синапсов`;
+    const id = target.dataset.id;
+    if (!id) return;
 
-        (card.querySelector('.gallery__item') as HTMLElement).dataset.id = product.id;
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
 
-        gallery.appendChild(card);
+    const card = templatePreview.content.cloneNode(true) as HTMLElement;
+    const categoryEl = card.querySelector('.card__category') as HTMLElement;
+    categoryEl.textContent = product.category;
+    categoryEl.classList.add(`card__category_${product.categoryType}`);
+
+    (card.querySelector('.card__title') as HTMLElement).textContent = product.title;
+    (card.querySelector('.card__text') as HTMLElement).textContent = product.description;
+    (card.querySelector('.card__price') as HTMLElement).textContent = `${product.price} синапсов`;
+
+    const img = card.querySelector('.card__image') as HTMLImageElement;
+    img.src = product.image;
+    img.alt = product.title;
+
+    // Кнопка "Купить / Удалить из корзины"
+    const buyButton = card.querySelector('.card__button') as HTMLButtonElement;
+
+    function updateButtonState() {
+        const isInCart = cartModel.getItems().some((item) => item.id === product.id);
+        buyButton.textContent = isInCart ? 'Удалить из корзины' : 'Купить';
+    }
+
+    updateButtonState();
+
+    buyButton.addEventListener('click', () => {
+        const isInCart = cartModel.getItems().some((item) => item.id === product.id);
+        if (isInCart) {
+            cartModel.remove(product.id);
+        } else {
+            cartModel.add({
+                id: product.id,
+                title: product.title,
+                price: product.price,
+                quantity: 1,
+            });
+        }
+        updateButtonState();
     });
-}
 
-renderCatalog(products);
+    modalContent.innerHTML = '';
+    modalContent.appendChild(card);
 
-// Модалка на карточку товара
-const modal = document.getElementById('modal-container') as HTMLElement;
-const content = modal.querySelector('.modal__content') as HTMLElement;
-const template = document.getElementById('card-preview') as HTMLTemplateElement;
-const card = template.content.cloneNode(true) as HTMLElement;
-
-document.querySelector('.gallery')?.addEventListener('click', (event) => {
-  const target = event.target as HTMLElement;
-  const button = target.closest('.gallery__item') as HTMLElement;
-  if (!button) return;
-
-  const id = button.dataset.id;
-  const product = products.find((p) => p.id === id);
-  if (!product) return;
-
-  const modal = document.getElementById('modal-container') as HTMLElement;
-  const content = modal.querySelector('.modal__content') as HTMLElement;
-  const template = document.getElementById('card-preview') as HTMLTemplateElement;
-  const card = template.content.cloneNode(true) as HTMLElement;
-
-  const categoryEl = card.querySelector('.card__category') as HTMLElement;
-  categoryEl.classList.remove('card__category_soft', 'card__category_other', 'card__category_additional');
-  if (product.category === 'soft-skill') {
-      categoryEl.classList.add('card__category_soft');
-  }
-  if (product.category === 'другое') {
-      categoryEl.classList.add('card__category_other');
-  }
-  if (product.category === 'дополнительное') {
-      categoryEl.classList.add('card__category_additional');
-  }
-  categoryEl.textContent = product.category;
-
-  (card.querySelector('.card__title') as HTMLElement).textContent = product.title;
-  (card.querySelector('.card__text') as HTMLElement).textContent = product.description;
-  (card.querySelector('.card__price') as HTMLElement).textContent = `${product.price} синапсов`;
-
-  const img = card.querySelector('.card__image') as HTMLImageElement;
-  img.src = product.image;
-  img.alt = product.title;
-
-  content.innerHTML = '';
-  content.appendChild(card);
-  openModal('modal-container');
+    openModal('modal-container');
 });
 
-
+// ---------- Корзина и прочее ----------
 document.querySelector('.header__basket')?.addEventListener('click', () => {
-  openModal('modal-basket');
+    openModal('modal-basket');
 });
 
-// По кнопке "Оформить"
 document.querySelector('#modal-basket .button')?.addEventListener('click', () => {
-  openModal('modal-order');
+    openModal('modal-order');
 });
 
-// По кнопке "Далее"
 document.querySelector('#modal-order .button')?.addEventListener('click', () => {
-  openModal('modal-contacts');
+    openModal('modal-contacts');
 });
 
-// По кнопке "За новыми покупками"
 document.querySelector('.order-success__close')?.addEventListener('click', () => {
-  openModal('modal-success');
+    openModal('modal-success');
 });
 
-
-
-// --- Вспомогательные функции ---
+// ---------- Модалки ----------
 function openModal(id: string) {
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('modal_active'));
     document.getElementById(id)?.classList.add('modal_active');
@@ -159,6 +141,28 @@ function setupModals(): void {
 
 setupModals();
 
-// Просто чтобы TS не ругался
-console.log(userModel);
-console.log(catalogView);
+// ---------- Валидация формы ----------
+const emailInput = userForm.querySelector('input[name="email"]') as HTMLInputElement;
+const phoneInput = userForm.querySelector('input[name="phone"]') as HTMLInputElement;
+const submitButton = userForm.querySelector('button[type="submit"]') as HTMLButtonElement;
+
+function validateForm() {
+    const isEmailValid = /^[\w-.]+@[\w-]+\.[a-z]{2,4}$/i.test(emailInput.value.trim());
+    const isPhoneValid = /^\+7\d{10}$/.test(phoneInput.value.replace(/\D/g, ''));
+    submitButton.disabled = !(isEmailValid && isPhoneValid);
+}
+
+emailInput.addEventListener('input', validateForm);
+phoneInput.addEventListener('input', validateForm);
+
+phoneInput.addEventListener('focus', () => {
+    if (!phoneInput.value.startsWith('+7')) {
+        phoneInput.value = '+7';
+    }
+});
+
+phoneInput.addEventListener('input', () => {
+    if (!phoneInput.value.startsWith('+7')) {
+        phoneInput.value = '+7';
+    }
+});

@@ -1,4 +1,4 @@
-import { IProduct } from '../types';
+import { IProduct } from '../types/product';
 import { EventEmitter } from '../components/base/events';
 
 export class CatalogModel {
@@ -8,14 +8,9 @@ export class CatalogModel {
 
     setProducts(products: IProduct[]) {
         this.products = products;
-        this.events.emit('catalog:update', this.products);
     }
 
     getProductById(id: string): IProduct | undefined {
-        return this.products.find(product => product.id === id);
-    }
-
-    getProducts(): IProduct[] {
-        return this.products;
+        return this.products.find((item) => item.id === id);
     }
 }

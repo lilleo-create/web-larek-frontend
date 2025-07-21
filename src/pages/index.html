@@ -46,28 +46,10 @@
 				<div class="basket">
 					<h2 class="modal__title">Корзина</h2>
 					<ul class="basket__list">
-						<li class="basket__item card card_compact">
-							<span class="basket__item-index">1</span>
-							<span class="card__title">Фреймворк куки судьбы</span>
-							<span class="card__price">2500 синапсов</span>
-							<button class="basket__item-delete" aria-label="удалить"></button>
-						</li>
-						<li class="basket__item card card_compact">
-							<span class="basket__item-index">2</span>
-							<span class="card__title">+1 час в сутках</span>
-							<span class="card__price">750 синапсов</span>
-							<button class="basket__item-delete" aria-label="удалить"></button>
-						</li>
-						<li class="basket__item card card_compact">
-							<span class="basket__item-index">3</span>
-							<span class="card__title">БЭМ-пилюлька</span>
-							<span class="card__price">150 000 синапсов</span>
-							<button class="basket__item-delete" aria-label="удалить"></button>
-						</li>
 					</ul>
 					<div class="modal__actions">
-						<button class="button">Оформить</button>
-						<span class="basket__price">153 250 синапсов</span>
+						<button class="button" data-next="success">Оформить</button>
+						<span class="basket__price"></span>
 					</div>
 				</div>
 			</div>
@@ -83,8 +65,8 @@
 						<div class="order__field">
 							<h2 class="modal__title">Способ оплаты</h2>
 							<div class="order__buttons">
-								<button type="button" class="button button_alt">Онлайн</button>
-								<button type="button" class="button button_alt">При получении</button>
+								<button type="button" class="button button_alt" name="card">Онлайн</button>
+								<button type="button" class="button button_alt" name="cash">При получении</button>
 							</div>
 						</div>
 						<label class="order__field">
@@ -129,7 +111,7 @@
 			<div class="modal__content">
 				<div class="order-success">
 					<h2 class="film__title">Заказ оформлен</h2>
-					<p class="film__description">Списано 153 250 синапсов</p>
+					<p class="film__description"></p>
 					<button class="button order-success__close">За новыми покупками!</button>
 				</div>
 			</div>
@@ -139,17 +121,17 @@
 	<template id="success">
 		<div class="order-success">
 			<h2 class="order-success__title">Заказ оформлен</h2>
-			<p class="order-success__description">Списано 0 синапсов</p>
+			<p class="order-success__description"></p>
 			<button class="button order-success__close">За новыми покупками!</button>
 		</div>
 	</template>
 
 	<template id="card-catalog">
 		<button class="gallery__item card">
-			<span class="card__category card__category_soft">софт-скил</span>
-			<h2 class="card__title">+1 час в сутках</h2>
+			<span class="card__category card__category_soft"></span>
+			<h2 class="card__title"></h2>
 			<img class="card__image" src="<%=require('../images/Subtract.svg')%>" alt="" />
-			<span class="card__price">750 синапсов</span>
+			<span class="card__price"></span>
 		</button>
 	</template>
 
@@ -170,9 +152,9 @@
 
 	<template id="card-basket">
 		<li class="basket__item card card_compact">
-			<span class="basket__item-index">1</span>
-			<span class="card__title">Фреймворк куки судьбы</span>
-			<span class="card__price">2500 синапсов</span>
+			<span class="basket__item-index"></span>
+			<span class="card__title"></span>
+			<span class="card__price"></span>
 			<button class="basket__item-delete card__button" aria-label="удалить"></button>
 		</li>
 	</template>
@@ -182,7 +164,7 @@
 			<h2 class="modal__title">Корзина</h2>
 			<ul class="basket__list"></ul>
 			<div class="modal__actions">
-				<button class="button basket__button">Оформить</button>
+				<button class="button basket__button" data-next="order">Оформить</button>
 				<span class="basket__price">0 синапсов</span>
 			</div>
 		</div>
@@ -204,7 +186,7 @@
 				</label>
 			</div>
 			<div class="modal__actions">
-				<button type="submit" disabled class="button order__button">Далее</button>
+				<button type="submit" disabled class="button order__button" data-next="contacts">Далее</button>
 				<span class="form__errors"></span>
 			</div>
 		</form>
@@ -223,7 +205,7 @@
 				</label>
 			</div>
 			<div class="modal__actions">
-				<button type="submit" disabled class="button">Оплатить</button>
+				<button type="submit" disabled class="button" type="submit">Оплатить</button>
 				<span class="form__errors"></span>
 			</div>
 		</form>
