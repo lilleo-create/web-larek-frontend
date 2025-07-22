@@ -18,3 +18,14 @@
     border: $hoverBorder;
   }
 }
+
+.form__error {
+  display: none;
+  color: white;
+  font-weight: 400;
+
+  &.form__error_active {
+    display: block;
+    
+  }
+}
