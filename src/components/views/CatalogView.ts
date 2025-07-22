@@ -22,7 +22,8 @@ export class CatalogView {
             categoryEl.classList.add(`card__category_${product.categoryType}`);
 
             titleEl.textContent = product.title;
-            priceEl.textContent = `${product.price} синапсов`;
+            priceEl.textContent =
+            typeof product.price === 'string' ? product.price : `${product.price} синапсов`;
             imgEl.src = product.image;
             imgEl.alt = product.title;
 
