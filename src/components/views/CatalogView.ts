@@ -1,10 +1,17 @@
+import { IProduct } from '../../types';
+import { ProductCardView } from './ProductCardView';
+
 export class CatalogView {
 	constructor(
-		protected element: HTMLElement
+		private container: HTMLElement,
+		private cardView: ProductCardView
 	) {}
 
-	render(productCards: HTMLElement[]) {
-		this.element.innerHTML = '';
-		productCards.forEach(card => this.element.appendChild(card));
+	render(products: IProduct[]) {
+		this.container.innerHTML = '';
+		products.forEach(product => {
+			const card = this.cardView.render(product);
+			this.container.appendChild(card);
+		});
 	}
 }

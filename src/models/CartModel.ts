@@ -1,4 +1,4 @@
-import { ICartItem } from '../types';
+import { ICartItem, ICartItemInput } from '../types';
 import { EventEmitter } from '../components/base/events';
 
 const CART_STORAGE_KEY = 'cart';
@@ -15,29 +15,35 @@ export class CartModel {
         return this.items;
     }
 
-    add(item: ICartItem): void {
-        const existing = this.items.find((i) => i.id === item.id);
-        if (existing) {
-            existing.quantity += 1;
-        } else {
-            this.items.push({ ...item, quantity: 1 });
-        }
-        this.saveToStorage();
-        this.events.emit('cart:change', this.getItems());
+    getTotal(): number {
+        return this.items.reduce((sum, item) => sum + item.price, 0);
     }
+
+    add(item: ICartItemInput): void {
+        const exists = this.items.some(i => i.id === item.id);
+        if (!exists) {
+            const itemToAdd = { ...item, quantity: 1 };
+            console.log('[CartModel] pushing to items:', itemToAdd);
+            this.items.push(itemToAdd);
+            this.saveToStorage();
+            this.events.emit('cart:change', this.getItems());
+        }
+
+    }
+
 
     remove(id: string): void {
-        const existing = this.items.find((i) => i.id === id);
-        if (!existing) return;
-
-        if (existing.quantity > 1) {
-            existing.quantity -= 1;
-        } else {
-            this.items = this.items.filter((i) => i.id !== id);
+        const lengthBefore = this.items.length;
+        this.items = this.items.filter((i) => i.id !== id);
+        if (this.items.length !== lengthBefore) {
+            this.saveToStorage();
+            this.events.emit('cart:change', this.getItems());
         }
-        this.saveToStorage();
-        this.events.emit('cart:change', this.getItems());
     }
+    inCart(id: string): boolean {
+        return this.items.some(item => item.id === id);
+    }
+
 
     clear(): void {
         this.items = [];

@@ -2,33 +2,28 @@ import { ICartItem } from '../../types';
 import { EventEmitter } from '../base/events';
 
 export class CardBasketView {
-	protected template: HTMLTemplateElement;
+	constructor(private template: HTMLTemplateElement) {}
 
-	constructor(protected events: EventEmitter) {
-		this.template = document.getElementById('card-basket') as HTMLTemplateElement;
-	}
+	render(item: ICartItem, index: number): HTMLElement {
+		const element = this.template.content.cloneNode(true) as HTMLElement;
 
-	create(item: ICartItem, index: number): HTMLElement {
-		const fragment = this.template.content.cloneNode(true) as DocumentFragment;
-
-		// Обернём во временный контейнер, чтобы извлечь корневой элемент
-		const wrapper = document.createElement('div');
-		wrapper.appendChild(fragment);
-		const li = wrapper.firstElementChild as HTMLElement;
-
-		const indexEl = li.querySelector('.basket__item-index') as HTMLElement;
-		const titleEl = li.querySelector('.card__title') as HTMLElement;
-		const priceEl = li.querySelector('.card__price') as HTMLElement;
-		const buttonEl = li.querySelector('.basket__item-delete') as HTMLButtonElement;
+		const indexEl = element.querySelector('.basket__item-index') as HTMLElement;
+		const titleEl = element.querySelector('.card__title') as HTMLElement;
+		const priceEl = element.querySelector('.card__price') as HTMLElement;
+		const buttonEl = element.querySelector('.basket__item-delete') as HTMLButtonElement;
 
 		indexEl.textContent = `${index + 1}`;
 		titleEl.textContent = item.title;
 		priceEl.textContent = `${item.price} синапсов`;
 
 		buttonEl.addEventListener('click', () => {
-			this.events.emit('item:remove', { id: item.id });
+			element.dispatchEvent(new CustomEvent('item:remove', {
+				bubbles: true,
+				detail: item.id
+			}));
 		});
 
-		return li;
+		return element;
 	}
 }
+

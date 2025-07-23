@@ -10,7 +10,7 @@ export class CardCatalogView {
 		this.template = document.getElementById(templateId) as HTMLTemplateElement;
 	}
 
-	create(product: IProduct): HTMLElement {
+	render(product: IProduct): HTMLElement {
 		const fragment = this.template.content.cloneNode(true) as DocumentFragment;
 
 		const wrapper = document.createElement('div');

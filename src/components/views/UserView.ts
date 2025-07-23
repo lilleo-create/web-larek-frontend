@@ -2,47 +2,65 @@ import { IUserData } from '../../types';
 import { EventEmitter } from '../base/events';
 
 export class UserView {
-	protected submitButton: HTMLButtonElement;
-	protected errorContainer: HTMLElement;
+	private addressInput: HTMLInputElement;
+	private paymentInput: HTMLInputElement;
+	private nextButton: HTMLButtonElement;
+	private errorSpan: HTMLElement;
+	private onlineButton: HTMLButtonElement;
+	private cashButton: HTMLButtonElement;
 
-	constructor(
-		protected form: HTMLFormElement,
-		protected events: EventEmitter
-	) {
-		this.submitButton = this.form.querySelector('button[type="submit"], .button[data-next]')!;
-		this.errorContainer = this.form.querySelector('.form__error, .form__errors')!;
-
-		this.form.addEventListener('input', () => this.handleChange());
-		this.form.addEventListener('change', () => this.handleChange());
+	constructor(private form: HTMLFormElement, private events: EventEmitter) {
+		this.addressInput = this.form.querySelector('input[name="address"]')!;
+		this.paymentInput = this.form.querySelector('input[name="payment"]')!;
+		this.nextButton = this.form.querySelector('.button[data-next="contacts"]')!;
+		this.errorSpan = this.form.querySelector('.form__error')!;
+		this.onlineButton = this.form.querySelector('button[name="card"]')!;
+		this.cashButton = this.form.querySelector('button[name="cash"]')!;
 	}
 
-	handleChange() {
-		this.events.emit('form:change', this.getData());
-	}
-
-	getData(): IUserData {
-		const formData = new FormData(this.form);
+	public getData(): IUserData {
 		return {
-			address: formData.get('address') as string,
-			email: formData.get('email') as string,
-			phone: formData.get('phone') as string,
-			payment: formData.get('payment') === 'online'
-	? 'online'
-	: formData.get('payment') === 'cash'
-	? 'cash'
-	: undefined,
-
+			address: this.addressInput.value.trim(),
+			payment: this.paymentInput.value as 'online' | 'cash',
+			email: '',
+			phone: '',
 		};
 	}
 
-	setErrors(message: string) {
-		if (this.errorContainer) {
-			this.errorContainer.textContent = message;
-			this.errorContainer.style.display = message ? 'block' : 'none';
-		}
+	public setButtonDisabled(value: boolean) {
+		this.nextButton.disabled = value;
 	}
 
-	setButtonDisabled(state: boolean) {
-		this.submitButton.disabled = state;
+	public setErrors(error: string) {
+		this.errorSpan.textContent = error;
+	}
+
+	public setPaymentListeners(callback: () => void) {
+		this.onlineButton.addEventListener('click', () => {
+			this.setActivePayment('online');
+			this.paymentInput.value = 'online';
+			callback();
+		});
+		this.cashButton.addEventListener('click', () => {
+			this.setActivePayment('cash');
+			this.paymentInput.value = 'cash';
+			callback();
+		});
+	}
+
+	public setAddressInputListener(callback: () => void) {
+		this.addressInput.addEventListener('input', callback);
+	}
+
+	public setNextButtonListener(callback: () => void) {
+		this.nextButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			callback();
+		});
+	}
+
+	private setActivePayment(type: 'online' | 'cash') {
+		this.onlineButton.classList.toggle('button_alt-active', type === 'online');
+		this.cashButton.classList.toggle('button_alt-active', type === 'cash');
 	}
 }
