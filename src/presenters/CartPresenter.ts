@@ -3,7 +3,7 @@ import { CartView } from '../components/views/CartView';
 import { EventEmitter } from '../components/base/events';
 import { ICartItem } from '../types';
 import { basketCounter, cartElement } from '../components/base/dom';
-import { Modal } from '../components/views/ModalView';
+import Modal from '../components/views/ModalView';
 
 export class CartPresenter {
   constructor(

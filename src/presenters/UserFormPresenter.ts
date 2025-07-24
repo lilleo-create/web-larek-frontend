@@ -1,7 +1,7 @@
 import { IUserData } from '../types';
 import { EventEmitter } from '../components/base/events';
 import { UserView } from '../components/views/UserView';
-import { Modal } from '../components/views/ModalView';
+import Modal from '../components/views/ModalView';
 import { orderButton } from '../components/base/dom';
 
 export class UserFormPresenter {

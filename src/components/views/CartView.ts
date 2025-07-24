@@ -4,21 +4,23 @@ import { EventEmitter } from '../base/events';
 
 export class CartView {
 	constructor(
-		protected element: HTMLElement, // .basket
+		protected container: HTMLElement, // modal__content
 		protected events: EventEmitter,
 		protected cardBasketView: CardBasketView
 	) {}
 
 	render(cartItems: ICartItem[], total: number): void {
-		const list = this.element.querySelector('.basket__list') as HTMLElement | null;
-		const price = this.element.querySelector('.basket__price') as HTMLElement | null;
-		const orderButton = this.element.querySelector('.button[data-next="order"]') as HTMLButtonElement | null;
+		// 1. Получаем шаблон
+		const template = document.getElementById('basket') as HTMLTemplateElement;
+		const clone = template.content.cloneNode(true) as DocumentFragment;
+		const basket = clone.querySelector('.basket') as HTMLElement;
 
-		if (!list || !price || !orderButton) {
-			console.warn('CartView: Один из элементов не найден в .basket');
-			return;
-		}
+		// 2. Находим нужные элементы
+		const list = basket.querySelector('.basket__list')!;
+		const price = basket.querySelector('.basket__price')!;
+		const orderButton = basket.querySelector('.button[data-next="order"]') as HTMLButtonElement;
 
+		// 3. Рендерим список
 		list.innerHTML = '';
 
 		if (cartItems.length === 0) {
@@ -36,5 +38,14 @@ export class CartView {
 		}
 
 		price.textContent = `${total} синапсов`;
+
+		// 4. Обработка клика по кнопке оформления
+		orderButton.addEventListener('click', () => {
+			this.events.emit('order:open');
+		});
+
+		// 5. Вставляем отрендеренный блок в модалку
+		this.container.innerHTML = '';
+		this.container.appendChild(basket);
 	}
 }

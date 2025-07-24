@@ -1,57 +1,41 @@
 import { IProduct } from '../../types';
+import { EventEmitter } from '../base/events';
 
-export class ProductCardView {
-	private _onClick?: (id: string) => void;
-	private _onBuy?: (id: string) => void;
+export class ProductCardView extends EventEmitter {
+	public product: IProduct;
+	private element: HTMLElement;
 
-	constructor(private template: HTMLTemplateElement) {}
+	constructor(template: HTMLTemplateElement, product: IProduct) {
+		super();
+		this.product = product;
 
-	set onClick(fn: (id: string) => void) {
-		this._onClick = fn;
-	}
+		const clone = template.content.cloneNode(true) as DocumentFragment;
+		const element = clone.querySelector('.card') as HTMLElement;
 
-	set onBuy(fn: (id: string) => void) {
-		this._onBuy = fn;
-	}
+		if (!element) {
+			throw new Error('[ProductCardView] Элемент .card не найден в шаблоне!');
+		}
 
-	render(product: IProduct): HTMLElement {
-		const fragment = this.template.content.cloneNode(true) as DocumentFragment;
-		const wrapper = document.createElement('div');
-		wrapper.appendChild(fragment);
-		const card = wrapper.firstElementChild as HTMLElement;
+		this.element = element;
 
-		const categoryEl = card.querySelector('.card__category') as HTMLElement;
-		const titleEl = card.querySelector('.card__title') as HTMLElement;
-		const priceEl = card.querySelector('.card__price') as HTMLElement;
-		const imgEl = card.querySelector('.card__image') as HTMLImageElement;
+		const titleEl = this.element.querySelector('.card__title') as HTMLElement;
+		const priceEl = this.element.querySelector('.card__price') as HTMLElement;
 
-		categoryEl.textContent = product.category;
-		categoryEl.classList.add(`card__category_${product.categoryType}`);
-		console.log('[ProductCardView] render:', product.title);
+		if (!titleEl || !priceEl) {
+			throw new Error('[ProductCardView] Элементы title или price не найдены!');
+		}
 
 		titleEl.textContent = product.title;
 		priceEl.textContent =
-			typeof product.price === 'string'
-				? product.price
-				: `${product.price} синапсов`;
+			typeof product.price === 'number' ? `${product.price} синапсов` : product.price;
 
-		imgEl.src = product.image;
-		imgEl.alt = product.title;
+		// Эмит клика по карточке (для открытия превью)
+		this.element.addEventListener('click', () => {
+			this.emit('click', { id: this.product.id });
+		});
+	}
 
-		card.dataset.id = product.id;
-
-		// Открытие карточки
-		card.addEventListener('click', () => this._onClick?.(product.id));
-
-		// Покупка товара
-		const buttonEl = card.querySelector('.card__button') as HTMLButtonElement;
-		if (buttonEl) {
-			buttonEl.addEventListener('click', (e) => {
-				e.stopPropagation(); // чтобы не сработал onClick при клике на кнопку
-				this._onBuy?.(product.id);
-			});
-		}
-
-		return card;
+	public getElement(): HTMLElement {
+		return this.element;
 	}
 }

@@ -1,4 +1,4 @@
-export class Modal {
+export default class Modal  {
 	protected container: HTMLElement;
 	protected content: HTMLElement;
 	protected closeButtons: NodeListOf<HTMLButtonElement>;
@@ -24,7 +24,7 @@ export class Modal {
 	if (typeof content === 'string') {
 		this.content.innerHTML = content;
 	} else {
-		this.content.appendChild(content.cloneNode(true));
+		this.content.appendChild(content);
 	}
 }
 

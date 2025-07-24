@@ -7,21 +7,20 @@ export class CardPreviewView {
 		private product: IProduct,
 		private cartModel: CartModel,
 		private events: EventEmitter
-	) { }
+	) {}
 
 	render(): HTMLElement {
 		const template = document.getElementById('card-preview') as HTMLTemplateElement;
-		const fragment = template.content.cloneNode(true) as DocumentFragment;
-		const card = fragment.querySelector('.card') as HTMLElement;
+		const clone = template.content.cloneNode(true) as DocumentFragment;
+		const card = clone.querySelector('.card') as HTMLElement;
 
-		const categoryEl = card.querySelector('.card__category') as HTMLElement;
-		const titleEl = card.querySelector('.card__title') as HTMLElement;
-		const textEl = card.querySelector('.card__text') as HTMLElement;
-		const priceEl = card.querySelector('.card__price') as HTMLElement;
+		const categoryEl = card.querySelector('.card__category')!;
+		const titleEl = card.querySelector('.card__title')!;
+		const textEl = card.querySelector('.card__text')!;
+		const priceEl = card.querySelector('.card__price')!;
 		const imgEl = card.querySelector('.card__image') as HTMLImageElement;
 		const buyButton = card.querySelector('.card__button') as HTMLButtonElement;
 
-		// Заполняем данные карточки
 		categoryEl.textContent = this.product.category;
 		categoryEl.classList.add(`card__category_${this.product.categoryType}`);
 		titleEl.textContent = this.product.title;
@@ -34,23 +33,20 @@ export class CardPreviewView {
 		imgEl.src = this.product.image;
 		imgEl.alt = this.product.title;
 
-		// Обновление состояния кнопки
 		const updateButtonState = () => {
-			const isInCart = this.cartModel.getItems().some(i => i.id === this.product.id);
-			buyButton.textContent = isInCart ? 'Удалить из корзины' : 'Купить';
+			const inCart = this.cartModel.inCart(this.product.id);
+			buyButton.textContent = inCart ? 'Удалить из корзины' : 'Купить';
 		};
 
 		updateButtonState();
 		this.events.on('cart:change', updateButtonState);
 
-		// Обработчик кнопки "Купить"
 		buyButton.addEventListener('click', () => {
 			console.log('[CardPreviewView] Клик по кнопке');
 			if (this.product.disabled) return;
-
-			const isInCart = this.cartModel.getItems().some(i => i.id === this.product.id);
-
-			if (isInCart) {
+			
+			const inCart = this.cartModel.inCart(this.product.id);
+			if (inCart) {
 				this.cartModel.remove(this.product.id);
 			} else {
 				this.cartModel.add({
@@ -63,10 +59,6 @@ export class CardPreviewView {
 			updateButtonState();
 		});
 
-		// Оборачиваем карточку в div, чтобы можно было вернуть полноценный HTMLElement
-		const wrapper = document.createElement('div');
-		wrapper.appendChild(card);
-
-		 return card;
+		return card;
 	}
 }

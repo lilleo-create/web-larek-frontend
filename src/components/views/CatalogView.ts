@@ -2,16 +2,22 @@ import { IProduct } from '../../types';
 import { ProductCardView } from './ProductCardView';
 
 export class CatalogView {
-	constructor(
-		private container: HTMLElement,
-		private cardView: ProductCardView
-	) {}
+	public template: HTMLTemplateElement;
+	private container: HTMLElement;
 
-	render(products: IProduct[]) {
-		this.container.innerHTML = '';
-		products.forEach(product => {
-			const card = this.cardView.render(product);
-			this.container.appendChild(card);
-		});
+	constructor(templateSelector: string, containerSelector: string) {
+		this.template = document.querySelector(templateSelector) as HTMLTemplateElement;
+		this.container = document.querySelector(containerSelector) as HTMLElement;
 	}
+
+	addCard(card: HTMLElement) {
+		this.container.appendChild(card);
+	}
+
+	clear() {
+		this.container.innerHTML = '';
+	}
+	
 }
+
+
