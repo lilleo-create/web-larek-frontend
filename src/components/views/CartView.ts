@@ -1,51 +1,53 @@
-import { ICartItem } from '../../types';
-import { CardBasketView } from './CardBasketView';
 import { EventEmitter } from '../base/events';
 
 export class CartView {
+	private _counter: HTMLElement;
+
 	constructor(
-		protected container: HTMLElement, // modal__content
-		protected events: EventEmitter,
-		protected cardBasketView: CardBasketView
-	) {}
+		private container: HTMLElement,
+		private events: EventEmitter,
+		counterElement: HTMLElement // <- третий аргумент конструктора
+	) {
+		this._counter = counterElement;
+	}
 
-	render(cartItems: ICartItem[], total: number): void {
-		// 1. Получаем шаблон
-		const template = document.getElementById('basket') as HTMLTemplateElement;
-		const clone = template.content.cloneNode(true) as DocumentFragment;
-		const basket = clone.querySelector('.basket') as HTMLElement;
+	public render(cards: HTMLElement[], total: number): void {
+		const list = this.container.querySelector('.basket__list')!;
+		const price = this.container.querySelector('.basket__price')!;
+		const orderButton = this.container.querySelector('.button[data-next="order"]') as HTMLButtonElement;
 
-		// 2. Находим нужные элементы
-		const list = basket.querySelector('.basket__list')!;
-		const price = basket.querySelector('.basket__price')!;
-		const orderButton = basket.querySelector('.button[data-next="order"]') as HTMLButtonElement;
-
-		// 3. Рендерим список
 		list.innerHTML = '';
 
-		if (cartItems.length === 0) {
+		if (cards.length === 0) {
 			const emptyText = document.createElement('p');
 			emptyText.classList.add('basket__empty');
 			emptyText.textContent = 'Корзина пуста';
 			list.appendChild(emptyText);
 			orderButton.disabled = true;
 		} else {
-			cartItems.forEach((item, index) => {
-				const card = this.cardBasketView.render(item, index);
-				list.appendChild(card);
-			});
+			cards.forEach(card => list.appendChild(card));
 			orderButton.disabled = false;
 		}
 
 		price.textContent = `${total} синапсов`;
 
-		// 4. Обработка клика по кнопке оформления
 		orderButton.addEventListener('click', () => {
-			this.events.emit('order:open');
+			this.events.emit('form:order');
 		});
-
-		// 5. Вставляем отрендеренный блок в модалку
-		this.container.innerHTML = '';
-		this.container.appendChild(basket);
 	}
+
+	public setContainer(container: HTMLElement) {
+		this.container = container;
+	}
+
+	public setCounter(count: number): void {
+	console.log('[DEBUG] setCounter вызван, count =', count);
+	if (this._counter) {
+		this._counter.textContent = String(count);
+		console.log('[DEBUG] счётчик обновлён:', this._counter.textContent);
+	} else {
+		console.warn('[DEBUG] _counter не найден');
+	}
+}
+
 }

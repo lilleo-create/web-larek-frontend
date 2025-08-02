@@ -1,45 +1,72 @@
 import { CartModel } from '../models/CartModel';
 import { CartView } from '../components/views/CartView';
+import { CardBasketView } from '../components/views/CardBasketView';
 import { EventEmitter } from '../components/base/events';
 import { ICartItem } from '../types';
-import { basketCounter, cartElement } from '../components/base/dom';
 import Modal from '../components/views/ModalView';
+import { cartElement } from '../components/base/dom';
 
 export class CartPresenter {
-  constructor(
-    protected model: CartModel,
-    protected view: CartView,
-    protected events: EventEmitter,
-    protected modal: Modal
-  ) {
-    this.events.on('cart:change', this.handleCartChange.bind(this));
-    cartElement.addEventListener('item:remove', this.handleRemoveItem.bind(this));
-    document.querySelector('.header__basket')?.addEventListener('click', this.openBasketModal.bind(this));
-  }
+	constructor(
+		private model: CartModel,
+		private view: CartView,
+		private cardBasketView: CardBasketView,
+		private events: EventEmitter,
+		private modal: Modal
+	) {
+		this.events.on('cart:change', this.handleCartChange.bind(this));
+		this.events.on('cart:clear', this.handleCartClear.bind(this));
 
- protected handleCartChange(items: ICartItem[]) {
-  this.view.render(items, this.model.getTotal());
-  basketCounter.textContent = String(items.length);
-}
+		cartElement.addEventListener('item:remove', this.handleRemoveItem.bind(this));
+		document.querySelector('.header__basket')?.addEventListener('click', this.openBasketModal.bind(this));
+	}
 
+	public init() {
+		this.handleCartChange(this.model.getItems());
+	}
 
-  protected handleRemoveItem(event: Event) {
-    const id = (event as CustomEvent).detail;
-    this.model.remove(id);
-  }
+	private handleCartChange(items: ICartItem[]) {
+		const cards = items.map((item, i) => this.cardBasketView.render(item, i));
+		const total = this.model.getTotal();
+		this.view.render(cards, total);
+		this.updateCounter(items.length);
+	}
 
-  protected openBasketModal() {
-    const el = document.getElementById('modal-basket');
-    if (!el) return;
+	private handleRemoveItem(event: Event) {
+		const id = (event as CustomEvent).detail;
+		this.model.remove(id);
+	}
 
-    const content = el.querySelector('.modal__content') as HTMLElement;
+	private openBasketModal() {
+		const template = document.getElementById('basket') as HTMLTemplateElement;
+		if (!template) return;
 
-    this.modal.setContent(content);         // вставляем содержимое модалки
-    this.view.render(                       // отрисовываем список корзины
-      this.model.getItems(),
-      this.model.getTotal()
-    );
-    this.modal.open();
-  }
+		const clone = template.content.cloneNode(true) as DocumentFragment;
+		const basket = clone.querySelector('.basket') as HTMLElement;
 
+		this.modal.setContent(basket);
+		this.view.setContainer(basket);
+
+		const items = this.model.getItems();
+		const cards = items.map((item, i) => this.cardBasketView.render(item, i));
+		this.view.render(cards, this.model.getTotal());
+
+		this.updateCounter(items.length);
+		this.modal.open();
+	}
+
+	private handleCartClear() {
+		this.model.clear();
+		this.view.render([], 0);
+		this.updateCounter(0);
+	}
+
+	private updateCounter(count: number) {
+		const el = document.querySelector('.header__basket-counter') as HTMLElement;
+		if (el) {
+			el.textContent = String(count);
+		} else {
+			console.warn('[CartPresenter] basketCounter not найден!');
+		}
+	}
 }

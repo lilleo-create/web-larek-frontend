@@ -1,4 +1,4 @@
-export default class Modal  {
+export default class Modal {
 	protected container: HTMLElement;
 	protected content: HTMLElement;
 	protected closeButtons: NodeListOf<HTMLButtonElement>;
@@ -16,17 +16,23 @@ export default class Modal  {
 		document.addEventListener('keydown', (e) => {
 			if (e.key === 'Escape') this.close();
 		});
+
 	}
+	getContent(): HTMLElement {
+		return this.container.querySelector('.modal__content')!;
+	}
+
 
 	setContent(content: HTMLElement | string) {
-	this.content.innerHTML = '';
+		this.content.innerHTML = '';
 
-	if (typeof content === 'string') {
-		this.content.innerHTML = content;
-	} else {
-		this.content.appendChild(content);
+		if (typeof content === 'string') {
+			this.content.innerHTML = content;
+		} else {
+			this.content.appendChild(content);
+		}
+
 	}
-}
 
 
 	open() {
@@ -38,4 +44,6 @@ export default class Modal  {
 		this.element.classList.remove('modal_active');
 		document.querySelector('.page__wrapper')?.classList.remove('page__wrapper_locked');
 	}
+
+
 }

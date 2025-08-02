@@ -1,10 +1,12 @@
-
-
 export interface ICartItem {
-  id: string;
-  title: string;
-  price: number;
-  quantity: number;
+	id: string;
+	title: string;
+	price: number;
+	quantity?: number;
 }
 
-export type ICartItemInput = Omit<ICartItem, 'quantity'>;
+export interface ICartItemInput {
+	id: string;
+	title: string;
+	price: number;
+}

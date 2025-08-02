@@ -3,13 +3,12 @@ import { EventEmitter } from '../components/base/events';
 
 const CART_STORAGE_KEY = 'cart';
 
-export class CartModel extends EventEmitter {
+export class CartModel {
 	protected items: ICartItem[] = [];
 
-	constructor() {
-		super(); // важно вызывать super() для EventEmitter
+	constructor(private events?: EventEmitter) {
 		this.loadFromStorage();
-		this.emit('change', this.getItems()); // заменил 'cart:change' на 'change' для единообразия
+		this.events?.emit('cart:change', this.getItems()); // обновим корзину при старте
 	}
 
 	getItems(): ICartItem[] {
@@ -27,7 +26,7 @@ export class CartModel extends EventEmitter {
 			console.log('[CartModel] pushing to items:', itemToAdd);
 			this.items.push(itemToAdd);
 			this.saveToStorage();
-			this.emit('change', this.getItems());
+			this.events?.emit('cart:change', this.getItems()); // 🔥 вот здесь обновляем глобально
 		}
 	}
 
@@ -36,7 +35,7 @@ export class CartModel extends EventEmitter {
 		this.items = this.items.filter((i) => i.id !== id);
 		if (this.items.length !== lengthBefore) {
 			this.saveToStorage();
-			this.emit('change', this.getItems());
+			this.events?.emit('cart:change', this.getItems());
 		}
 	}
 
@@ -47,7 +46,7 @@ export class CartModel extends EventEmitter {
 	clear(): void {
 		this.items = [];
 		this.saveToStorage();
-		this.emit('change', this.getItems());
+		this.events?.emit('cart:change', this.getItems());
 	}
 
 	protected saveToStorage(): void {

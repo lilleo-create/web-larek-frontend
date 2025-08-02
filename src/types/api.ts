@@ -1,8 +1,12 @@
-export interface IApiProductResponse {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  price: number;
-  image: string;
+export interface IOrder {
+	payment: string;
+	address: string;
+	email: string;
+	phone: string;
+	items: string[];
+}
+
+export interface IOrderResult {
+	id: string;
+	total: number;
 }

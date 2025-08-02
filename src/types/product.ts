@@ -1,10 +1,17 @@
+export interface IApiProductResponse {
+	id: string;
+	title: string;
+	description: string;
+	category: string;
+	price: number;
+	image: string;
+}
+
 export interface IProduct {
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    categoryType: 'soft' | 'other' | 'additional' | 'button' | 'hard';
-    price: number | string;
-    disabled?: boolean;
-    image: string;
+	id: string;
+	title: string;
+	description: string;
+	category: string;
+	price: number;
+	image: string;
 }
