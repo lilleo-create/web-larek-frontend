@@ -23,7 +23,7 @@ export class CardCatalogView {
 		const imgEl = card.querySelector('.card__image') as HTMLImageElement;
 
 		categoryEl.textContent = product.category;
-		categoryEl.classList.add(`card__category_${product.categoryType}`);
+		categoryEl.classList.add(`card__category_${product.category}`);
 		titleEl.textContent = product.title;
 		priceEl.textContent = typeof product.price === 'string'
 			? product.price

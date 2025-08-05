@@ -1,4 +1,4 @@
 export interface IUserData {
 	address: string;
-	payment: string;
+	payment: 'online' | 'cash';
 }

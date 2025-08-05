@@ -1,7 +1,8 @@
-import { IUserData, IOrder } from '../types';
+import { IUserData } from '../types/user';
+import { IOrder } from '../types/api';
 import { EventEmitter } from '../components/base/events';
 import { UserView } from '../components/views/UserView';
-import Modal from '../components/views/ModalView';
+import {Modal} from '../components/views/ModalView';
 import { Api } from '../components/base/api';
 import { CartModel } from '../models/CartModel';
 
@@ -10,8 +11,8 @@ export class UserFormPresenter {
 		private view: UserView,
 		private events: EventEmitter,
 		private modal: Modal,
-		private api: Api,               // 👈 добавляем API
-		private cartModel: CartModel    // 👈 добавляем CartModel
+		private api: Api,
+		private cartModel: CartModel
 	) {
 		this.view.setPaymentListeners(() => this.emitFormChange());
 		this.view.setAddressInputListener(() => this.emitFormChange());
@@ -43,21 +44,20 @@ export class UserFormPresenter {
 		if (!this.validateContact(contact)) return;
 
 		const user = this.view.getData();
-		const items = this.cartModel.getItems().map(item => item.id); // 👈 получаем id товаров
+		const items = this.cartModel.getItems().map(item => item.id);
 
 		const order: IOrder = {
 			payment: user.payment,
 			address: user.address,
 			email: contact.email,
 			phone: contact.phone,
-			items: items
+			items
 		};
 
-		// 🔥 Отправка заказа
 		this.api.orderProducts(order).then(() => {
 			this.events.emit('cart:clear');
 			this.events.emit('form:success');
-		}).catch((error) => {
+		}).catch((error: unknown) => {
 			console.error('[Order failed]', error);
 			this.view.setContactErrors('Ошибка отправки заказа');
 		});
@@ -109,4 +109,14 @@ export class UserFormPresenter {
 		if (!template) return;
 
 		const clone = template.content.cloneNode(true) as DocumentFragment;
-		const successEl = clone.querySelector('.order-success') as HT
+		const successEl = clone.querySelector('.order-success') as HTMLElement;
+
+		this.modal.setContent(successEl);
+		this.modal.open();
+
+		const goBackBtn = successEl.querySelector('.order-success__close') as HTMLButtonElement;
+		goBackBtn?.addEventListener('click', () => {
+			this.modal.close();
+		});
+	}
+}

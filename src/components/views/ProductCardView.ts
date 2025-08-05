@@ -33,8 +33,23 @@ export class ProductCardView extends EventEmitter {
 		this.element.addEventListener('click', () => {
 			this.emit('click', { id: this.product.id });
 		});
+		const button = this.element.querySelector('.card__button') as HTMLButtonElement;
+if (button) {
+	button.addEventListener('click', (e) => {
+		e.stopPropagation(); // чтобы не срабатывал открывающий модалку .card
+		this.emit('buy', { id: this.product.id });
+	});
+}
+
 	}
 
+	updateButton(inCart: boolean) {
+		const button = this.element.querySelector('.card__button') as HTMLButtonElement;
+		if (button) {
+			button.textContent = inCart ? 'Удалить' : 'Купить';
+		}
+	}
+	
 	public getElement(): HTMLElement {
 		return this.element;
 	}

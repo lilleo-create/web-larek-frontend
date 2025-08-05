@@ -22,7 +22,7 @@ export class CardPreviewView {
 		const buyButton = card.querySelector('.card__button') as HTMLButtonElement;
 
 		categoryEl.textContent = this.product.category;
-		categoryEl.classList.add(`card__category_${this.product.categoryType}`);
+		categoryEl.classList.add(`card__category_${this.product.category}`);
 		titleEl.textContent = this.product.title;
 		textEl.textContent = this.product.description;
 		priceEl.textContent =

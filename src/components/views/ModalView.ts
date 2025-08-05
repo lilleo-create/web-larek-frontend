@@ -1,4 +1,4 @@
-export default class Modal {
+export class Modal {
 	protected container: HTMLElement;
 	protected content: HTMLElement;
 	protected closeButtons: NodeListOf<HTMLButtonElement>;

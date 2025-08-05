@@ -5,7 +5,8 @@ export type ApiListResponse<Type> = {
 
 export type ApiPostMethods = 'POST' | 'PUT' | 'DELETE';
 
-import { IProduct, IOrder, IOrderResult } from './types'; // поправь путь при необходимости
+import { IProduct } from '../../types/product';
+import { IOrder, IOrderResult } from '../../types/api';
 
 export class Api {
 	readonly baseUrl: string;
@@ -21,7 +22,7 @@ export class Api {
 		};
 	}
 
-	protected handleResponse(response: Response): Promise<object> {
+	protected handleResponse(response: Response): Promise<any> {
 		if (response.ok) return response.json();
 		else return response.json()
 			.then(data => Promise.reject(data.error ?? response.statusText));
@@ -42,7 +43,7 @@ export class Api {
 		}).then(this.handleResponse);
 	}
 
-	// 👇 ДОБАВЬ ЭТИ ДВА МЕТОДА:
+	// Методы обёртки
 	getProductList(): Promise<IProduct[]> {
 		return this.get('/product') as Promise<IProduct[]>;
 	}

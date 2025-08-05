@@ -18,14 +18,13 @@ export class UserView {
 		this.cashButton = this.form.querySelector('button[name="cash"]')!;
 	}
 
-	public getData(): IUserData {
+	getData(): IUserData {
 		return {
-			address: this.addressInput.value.trim(),
-			payment: this.paymentInput.value as 'online' | 'cash',
-			email: '',
-			phone: '',
+			address: this.addressInput.value,
+			payment: this.getSelectedPayment()
 		};
 	}
+	
 
 	public setButtonDisabled(value: boolean) {
 		this.nextButton.disabled = value;
@@ -34,6 +33,11 @@ export class UserView {
 	public setErrors(error: string) {
 		this.errorSpan.textContent = error;
 	}
+
+	private getSelectedPayment(): 'online' | 'cash' {
+		return this.paymentInput.value === 'online' ? 'online' : 'cash';
+	}
+	
 
 	public setPaymentListeners(callback: () => void) {
 		this.onlineButton.addEventListener('click', () => {

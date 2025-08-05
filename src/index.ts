@@ -1,70 +1,98 @@
-// ✅ Стили
 import './scss/styles.scss';
 
-// ✅ Базовые модули и модели
+import { API_URL, CDN_URL } from './utils/constants';
+import { Api } from './components/base/api';
 import { EventEmitter } from './components/base/events';
-import { CartModel } from './models/CartModel';
-import { CatalogModel } from './models/CatalogModel';
-import { Api } from './components/base/api'; // 🔌 Добавлено
 
-// ✅ Представления
-import { CatalogView } from './components/views/CatalogView';
+import { Modal } from './components/views/ModalView';
+
+import { CatalogModel } from './models/CatalogModel';
+import { CartModel } from './models/CartModel';
+import { UserModel } from './models/UserModel';
+
+import { CardCatalogView } from './components/views/CardCatalogView';
+import { CardPreviewView } from './components/views/CardPreviewView';
 import { CartView } from './components/views/CartView';
 import { CardBasketView } from './components/views/CardBasketView';
 import { UserView } from './components/views/UserView';
-import Modal from './components/views/ModalView';
-import { CardCatalogView } from './components/views/CardCatalogView';
+import { ContactView } from './components/views/ContactView';
 
-import {
-	getBasketCounter,
-	basketElement,
-	basketTemplate,
-	modalContainer,
-	addressForm
-} from './components/base/dom';
-
-// ✅ Презентеры
-import { UserFormPresenter } from './presenters/UserFormPresenter';
-import { CartPresenter } from './presenters/CartPresenter';
 import { ProductPresenter } from './presenters/ProductPresenter';
+import { CartPresenter } from './presenters/CartPresenter';
+import { UserFormPresenter } from './presenters/UserFormPresenter';
 
-document.addEventListener('DOMContentLoaded', () => {
-	// ✅ Системные сущности
-	const events = new EventEmitter();
-	const api = new Api('https://larek-api.nomoreparties.co');
+// 📦 Базовые зависимости
+const emitter = new EventEmitter();
+const api = new Api(API_URL);
+const modal = new Modal(document.querySelector('.modal')!);
 
-	const cartModel = new CartModel(events);
-	const catalogModel = new CatalogModel(events);
-	const modal = new Modal(modalContainer);
+// 📦 Модели
+const catalogModel = new CatalogModel(emitter);
+const cartModel = new CartModel(emitter);
+const userModel = new UserModel(emitter);
 
-	// ✅ Представления
-	const cardBasketView = new CardBasketView(basketTemplate);
-	const cartView = new CartView(basketElement, events, getBasketCounter());
-	const userView = new UserView(addressForm, events);
-
-	const cardCatalogView = new CardCatalogView(
-		'#card-catalog',
-		(id: string) => events.emit('card:select', { id })
-	);
-
-	const catalogView = new CatalogView('#card-catalog', '.gallery');
-
-	// ✅ Презентеры
-	const cartPresenter = new CartPresenter(cartModel, cartView, cardBasketView, events, modal);
-	new UserFormPresenter(userView, events, modal, api, cartModel);
-
-	const productPresenter = new ProductPresenter(
-		catalogModel,
-		cartModel,
-		catalogView,
-		modal,
-		events
-	);
-
-	// 🔁 Получение товаров с сервера
-	api.getProductList().then((products) => {
-		productPresenter.init(products);
-	});
-
-	cartPresenter.init();
+// 👁️ Представления
+const catalogView = new CardCatalogView('#card-catalog', (id: string) => {
+  emitter.emit('card:select', { id });
 });
+const previewView = new CardPreviewView(
+  document.querySelector('#card-preview') as HTMLTemplateElement,
+  document.querySelector('.modal__content') as HTMLElement,
+  CDN_URL
+);
+
+
+const cartView = new CartView(
+  document.getElementById('modal-basket')!,
+  emitter
+);
+
+const basketView = new CardBasketView(
+  document.querySelector('#card-basket') as HTMLTemplateElement
+);
+
+const userView = new UserView(
+  document.getElementById('modal-order')!,
+  '#order'
+);
+
+const contactView = new ContactView(
+  document.querySelector('#modal-contacts form') as HTMLFormElement
+);
+
+
+// 🎮 Презентеры
+const productPresenter = new ProductPresenter(
+  catalogModel,
+  cartModel,
+  catalogView,
+  previewView,
+  emitter,
+  modal
+);
+
+const cartPresenter = new CartPresenter(
+  cartModel,
+  cartView,
+  basketView,
+  emitter,
+  modal
+);
+
+const userFormPresenter = new UserFormPresenter(
+  userModel,
+  userView,
+  contactView,
+  cartModel,
+  api,
+  emitter,
+  modal
+);
+
+// 🚀 Получение данных и запуск
+api.getProductList().then((items) => {
+  catalogModel.setItems(items);
+});
+
+productPresenter.init();
+cartPresenter.init();
