@@ -1,45 +1,79 @@
+// src/presenters/CartPresenter.ts
 import { CartModel } from '../models/CartModel';
 import { CartView } from '../components/views/CartView';
 import { EventEmitter } from '../components/base/events';
-import { ICartItem } from '../types';
-import { basketCounter, cartElement } from '../components/base/dom';
 import Modal from '../components/views/ModalView';
+import { UserView } from '../components/views/UserView';
+import { UserFormPresenter } from './UserFormPresenter';
+import { ICartItem } from '../types';
 
 export class CartPresenter {
   constructor(
-    protected model: CartModel,
-    protected view: CartView,
-    protected events: EventEmitter,
-    protected modal: Modal
+    private model: CartModel,
+    private view: CartView,
+    private events: EventEmitter,
+    private modal: Modal
   ) {
-    this.events.on('cart:change', this.handleCartChange.bind(this));
-    cartElement.addEventListener('item:remove', this.handleRemoveItem.bind(this));
-    document.querySelector('.header__basket')?.addEventListener('click', this.openBasketModal.bind(this));
+    // открыть корзину
+    this.events.on('cart:open', this.openCart);
+
+    // удалить товар (CartView шлёт { index })
+    this.events.on('cart:delete', ({ index }: { index: number }) => {
+      const items = this.model.getItems();
+      const item = items[index];
+      if (item) this.model.remove(item.id);
+    });
+
+    // оформить заказ -> открыть шаг "Способ оплаты + адрес"
+    this.events.on('cart:order', this.openOrder);
+
+    // очистить корзину
+    this.events.on('cart:clear', () => this.model.clear());
+
+    // обновления модели корзины
+    this.model.on('change', (items: ICartItem[]) => {
+      // счётчик у иконки
+      this.updateCartCount(items.length);
+
+      // если модалка корзины открыта — перерисуем её содержимое
+      if (this.modal.element.classList.contains('modal_active')) {
+        const el = this.view.render(items, this.model.getTotal());
+        this.modal.setContent(el);
+      }
+    });
+
+    // первичное состояние счётчика
+    this.updateCartCount(this.model.getItems().length);
   }
 
- protected handleCartChange(items: ICartItem[]) {
-  this.view.render(items, this.model.getTotal());
-  basketCounter.textContent = String(items.length);
-}
-
-
-  protected handleRemoveItem(event: Event) {
-    const id = (event as CustomEvent).detail;
-    this.model.remove(id);
-  }
-
-  protected openBasketModal() {
-    const el = document.getElementById('modal-basket');
-    if (!el) return;
-
-    const content = el.querySelector('.modal__content') as HTMLElement;
-
-    this.modal.setContent(content);         // вставляем содержимое модалки
-    this.view.render(                       // отрисовываем список корзины
-      this.model.getItems(),
-      this.model.getTotal()
-    );
+  private openCart = () => {
+    const items = this.model.getItems();
+    const total = this.model.getTotal();
+    const cartElement = this.view.render(items, total);
+    this.modal.setContent(cartElement);
     this.modal.open();
-  }
+  };
 
+  private openOrder = () => {
+    const template = document.querySelector<HTMLTemplateElement>('#order');
+    if (!template) throw new Error('Template #order not found');
+
+    const content = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    const form = content as HTMLFormElement;
+
+    this.modal.setContent(content);
+
+    // подключаем форму заказа
+    const userView = new UserView(form, this.events);
+    new UserFormPresenter(userView, this.events, this.modal);
+
+    this.modal.open();
+  };
+
+  private updateCartCount(count: number) {
+    const el = document.querySelector('.header__basket-counter') as HTMLElement | null;
+    if (!el) return;
+    el.textContent = String(count);
+    
+  }
 }

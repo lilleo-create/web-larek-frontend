@@ -1,49 +1,36 @@
-import { IUserData } from '../../types';
-import { EventEmitter } from '../base/events';
-
 export class ContactView {
-	private emailInput: HTMLInputElement;
-	private phoneInput: HTMLInputElement;
-	private submitButton: HTMLButtonElement;
+  private form!: HTMLFormElement;
+  private emailInput!: HTMLInputElement;
+  private phoneInput!: HTMLInputElement;
+  private submitBtn!: HTMLButtonElement;
+  private errorsEl!: HTMLElement | null;
 
-	constructor(
-		private form: HTMLFormElement,
-		private events: EventEmitter,
-		private onSuccess: () => void
-	) {
-		this.emailInput = this.form.querySelector('input[placeholder="Введите Email"]')!;
-		this.phoneInput = this.form.querySelector('input[placeholder="+7 ("]')!;
-		this.submitButton = this.form.querySelector('button[type="submit"]')!;
+  constructor(private selector: string) {}
 
-		this.form.addEventListener('submit', this.handleSubmit.bind(this));
-		this.form.addEventListener('input', this.validate.bind(this));
-		this.phoneInput.addEventListener('input', this.maskPhone.bind(this));
+  render(): HTMLFormElement {
+    const tpl = document.querySelector<HTMLTemplateElement>(this.selector);
+    if (!tpl) throw new Error(`Template ${this.selector} not found`);
+    const content = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
 
-		this.validate();
-	}
+    this.form = content as HTMLFormElement;
+    this.emailInput = this.form.elements.namedItem('email') as HTMLInputElement;
+    this.phoneInput = this.form.elements.namedItem('phone') as HTMLInputElement;
+    this.submitBtn = this.form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    this.errorsEl = this.form.querySelector('.form__errors');
 
-	private handleSubmit(event: Event) {
-		event.preventDefault();
-		if (!this.submitButton.disabled) {
-			this.onSuccess();
-		}
-	}
+    if (!this.emailInput || !this.phoneInput || !this.submitBtn) {
+      throw new Error('Contacts template missing required fields');
+    }
 
-	public validate() {
-		const isEmailValid = /^[\w-.]+@[\w-]+\.[a-z]{2,4}$/i.test(this.emailInput.value.trim());
-		const isPhoneValid = /\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}/.test(this.phoneInput.value);
-		this.submitButton.disabled = !(isEmailValid && isPhoneValid);
-	}
+    return this.form;
+  }
 
-	private maskPhone() {
-		let value = this.phoneInput.value.replace(/\D/g, '');
-		if (value.startsWith('8')) value = '7' + value.slice(1);
-		if (!value.startsWith('7')) value = '7' + value;
+  onEmailInput(cb: () => void) { this.emailInput.addEventListener('input', cb); }
+  onPhoneInput(cb: () => void) { this.phoneInput.addEventListener('input', cb); }
+  onSubmit(cb: () => void) { this.form.addEventListener('submit', (e) => { e.preventDefault(); cb(); }); }
 
-		const template = '+7 (___) ___-__-__';
-		let i = 0;
-		this.phoneInput.value = template.replace(/./g, (char) =>
-			/[_\d]/.test(char) && i < value.length ? value.charAt(i++) : char
-		);
-	}
+  setSubmitDisabled(disabled: boolean) { this.submitBtn.disabled = disabled; }
+  setErrors(text: string) { if (this.errorsEl) this.errorsEl.textContent = text; }
+
+  getData() { return { email: this.emailInput.value, phone: this.phoneInput.value }; }
 }

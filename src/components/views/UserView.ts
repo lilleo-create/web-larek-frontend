@@ -10,14 +10,15 @@ export class UserView {
 	private cashButton: HTMLButtonElement;
 
 	constructor(private form: HTMLFormElement, private events: EventEmitter) {
-		this.addressInput = this.form.querySelector('input[name="address"]')!;
-		this.paymentInput = this.form.querySelector('input[name="payment"]')!;
-		this.nextButton = this.form.querySelector('.button[data-next="contacts"]')!;
-		this.errorSpan = this.form.querySelector('.form__error')!;
-		this.onlineButton = this.form.querySelector('button[name="card"]')!;
-		this.cashButton = this.form.querySelector('button[name="cash"]')!;
+		this.addressInput = this.form.querySelector('input[name="address"]');
+		this.paymentInput = this.form.querySelector('input[name="payment"]');
+		this.nextButton = this.form.querySelector('.button[data-next="contacts"]') ?? null;
+		this.errorSpan = this.form.querySelector('.form__error, .form__errors')!;
+	
+		this.onlineButton = this.form.querySelector('button[name="card"]');
+		this.cashButton = this.form.querySelector('button[name="cash"]');
 	}
-
+	
 	public getData(): IUserData {
 		return {
 			address: this.addressInput.value.trim(),
@@ -36,29 +37,38 @@ export class UserView {
 	}
 
 	public setPaymentListeners(callback: () => void) {
+		if (!this.onlineButton || !this.cashButton || !this.paymentInput) return;
+	
 		this.onlineButton.addEventListener('click', () => {
 			this.setActivePayment('online');
-			this.paymentInput.value = 'online';
+			this.paymentInput!.value = 'online';
 			callback();
 		});
 		this.cashButton.addEventListener('click', () => {
 			this.setActivePayment('cash');
-			this.paymentInput.value = 'cash';
+			this.paymentInput!.value = 'cash';
 			callback();
 		});
 	}
 
 	public setAddressInputListener(callback: () => void) {
-		this.addressInput.addEventListener('input', callback);
-	}
-
-	public setNextButtonListener(callback: () => void) {
-		this.nextButton.addEventListener('click', (e) => {
-			e.preventDefault();
+		if (!this.addressInput) return;
+		this.addressInput.addEventListener('input', () => {
+			console.log('[input] address changed:', this.addressInput.value);
 			callback();
 		});
 	}
 
+	public setNextButtonListener(callback: () => void) {
+		const nextButton = this.form.querySelector<HTMLButtonElement>('.button[data-next="contacts"]');
+		if (!nextButton) return;
+	
+		nextButton.addEventListener('click', (e) => {
+			e.preventDefault();
+			callback();
+		});
+	}
+	
 	private setActivePayment(type: 'online' | 'cash') {
 		this.onlineButton.classList.toggle('button_alt-active', type === 'online');
 		this.cashButton.classList.toggle('button_alt-active', type === 'cash');

@@ -1,51 +1,73 @@
 import { ICartItem } from '../../types';
-import { CardBasketView } from './CardBasketView';
 import { EventEmitter } from '../base/events';
 
 export class CartView {
+	protected basketTemplate: HTMLTemplateElement;
+	protected itemTemplate: HTMLTemplateElement;
+
 	constructor(
-		protected container: HTMLElement, // modal__content
 		protected events: EventEmitter,
-		protected cardBasketView: CardBasketView
-	) {}
+		basketTemplate: HTMLTemplateElement,
+		itemTemplate: HTMLTemplateElement
+	) {
+		this.basketTemplate = basketTemplate;
+		this.itemTemplate = itemTemplate;
 
-	render(cartItems: ICartItem[], total: number): void {
-		// 1. Получаем шаблон
-		const template = document.getElementById('basket') as HTMLTemplateElement;
-		const clone = template.content.cloneNode(true) as DocumentFragment;
-		const basket = clone.querySelector('.basket') as HTMLElement;
+		// подписка на клик по иконке корзины
+		const basketButton = document.querySelector('.header__basket');
+		if (!basketButton) throw new Error('Cart button (.header__basket) not found');
 
-		// 2. Находим нужные элементы
-		const list = basket.querySelector('.basket__list')!;
-		const price = basket.querySelector('.basket__price')!;
-		const orderButton = basket.querySelector('.button[data-next="order"]') as HTMLButtonElement;
-
-		// 3. Рендерим список
-		list.innerHTML = '';
-
-		if (cartItems.length === 0) {
-			const emptyText = document.createElement('p');
-			emptyText.classList.add('basket__empty');
-			emptyText.textContent = 'Корзина пуста';
-			list.appendChild(emptyText);
-			orderButton.disabled = true;
-		} else {
-			cartItems.forEach((item, index) => {
-				const card = this.cardBasketView.render(item, index);
-				list.appendChild(card);
-			});
-			orderButton.disabled = false;
-		}
-
-		price.textContent = `${total} синапсов`;
-
-		// 4. Обработка клика по кнопке оформления
-		orderButton.addEventListener('click', () => {
-			this.events.emit('order:open');
+		basketButton.addEventListener('click', () => {
+			this.events.emit('cart:open');
 		});
 
-		// 5. Вставляем отрендеренный блок в модалку
-		this.container.innerHTML = '';
-		this.container.appendChild(basket);
 	}
+
+render(items: ICartItem[], total: number): HTMLElement {
+  const basketElement = this.basketTemplate.content.firstElementChild!
+    .cloneNode(true) as HTMLElement;
+
+  const list = basketElement.querySelector('.basket__list') as HTMLUListElement;
+  const totalEl = basketElement.querySelector('.basket__price') as HTMLElement;
+  // кнопка может быть и по классу, и по data-атрибуту — подстрахуемся
+  const orderButton = (basketElement.querySelector('.basket__button') ||
+                      basketElement.querySelector('[data-next="order"]')) as HTMLButtonElement;
+
+  // цена всегда актуальна
+  totalEl.textContent = `${total} синапсов`;
+
+  // ---------- ПУСТОЕ СОСТОЯНИЕ ----------
+  if (!items || items.length === 0) {
+    list.innerHTML = '';
+    const empty = document.createElement('li');
+    empty.className = 'basket__empty';
+    empty.textContent = 'Корзина пуста';
+    list.appendChild(empty);
+
+    if (orderButton) orderButton.disabled = true;
+    return basketElement;
+  }
+
+  // ---------- НЕ ПУСТО ----------
+  list.innerHTML = '';
+  items.forEach((item, index) => {
+    const itemEl = this.itemTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    (itemEl.querySelector('.card__title') as HTMLElement).textContent = item.title;
+    (itemEl.querySelector('.card__price') as HTMLElement).textContent = `${item.price} синапсов`;
+    (itemEl.querySelector('.basket__item-index') as HTMLElement).textContent = String(index + 1);
+
+    (itemEl.querySelector('.basket__item-delete') as HTMLButtonElement)
+      .addEventListener('click', () => this.events.emit('cart:delete', { index }));
+
+    list.append(itemEl);
+  });
+
+  if (orderButton) {
+    orderButton.disabled = false;
+    orderButton.addEventListener('click', () => this.events.emit('cart:order'));
+  }
+
+  return basketElement;
+}
+
 }

@@ -1,3 +1,30 @@
+import { IProduct,  } from '../../types/product';
+import { IApiProductResponse  } from '../../types/api';
+
+// Добавь маппинг
+function getCategoryType(category: string): IProduct['categoryType'] {
+	const map: Record<string, IProduct['categoryType']> = {
+		'софт-скил': 'soft',
+		'дополнительное': 'additional',
+		'другое': 'other',
+		'жёсткое': 'hard',
+		'кнопка': 'button',
+	};
+
+	return map[category.toLowerCase()] ?? 'other';
+}
+
+function mapProduct(apiProduct: IApiProductResponse): IProduct {
+	const isMamka = apiProduct.title.toLowerCase().includes('мамка-таймер');
+
+	return {
+		...apiProduct,
+		categoryType: getCategoryType(apiProduct.category),
+		price: isMamka ? 'Бесценно' : apiProduct.price,
+		disabled: isMamka,
+	};
+}
+
 export type ApiListResponse<Type> = {
     total: number,
     items: Type[]
@@ -39,4 +66,11 @@ export class Api {
             body: JSON.stringify(data)
         }).then(this.handleResponse);
     }
+		getProducts(): Promise<IProduct[]> {
+			return this.get('/product/')
+				.then((data: ApiListResponse<IApiProductResponse>) =>
+					data.items.map(mapProduct)
+				);
+		}
+		
 }

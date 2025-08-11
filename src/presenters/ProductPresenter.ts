@@ -22,19 +22,22 @@ export class ProductPresenter {
 
 		products.forEach((product) => {
 			const card = new ProductCardView(this.catalogView.template, product);
-			this.catalogView.addCard(card.getElement());
+this.catalogView.addCard(card.getElement());
 
-			card.on('buy', ({ id }: { id: string }) => {
-				const inCart = this.cartModel.inCart(id);
-				if (inCart) {
-					this.cartModel.remove(id);
-				} else {
-					this.cartModel.add({
-						id: product.id,
-						title: product.title,
-						price: typeof product.price === 'number' ? product.price : 0,
-					});
-				}
+// стартовое состояние
+card.setInCart?.(this.cartModel.inCart(product.id));
+
+card.on('buy', ({ id }: { id: string }) => {
+  if (this.cartModel.inCart(id)) return;
+
+  this.cartModel.add({
+    id: product.id,
+    title: product.title,
+    price: typeof product.price === 'number' ? product.price : 0,
+  });
+
+  card.setInCart?.(true);
+  this.events.emit('cart:changed'); // если нужен бейдж/итог
 			});
 
 			card.on('click', ({ id }: { id: string }) => {

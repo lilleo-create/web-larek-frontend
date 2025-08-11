@@ -1,41 +1,43 @@
-export default class Modal  {
-	protected container: HTMLElement;
-	protected content: HTMLElement;
-	protected closeButtons: NodeListOf<HTMLButtonElement>;
+// components/views/ModalView.ts
+export default class Modal {
+  public element: HTMLElement;
+  private contentEl: HTMLElement;
+  private closeButtons: NodeListOf<Element>;
 
-	constructor(protected element: HTMLElement) {
-		this.container = element.querySelector('.modal__container') as HTMLElement;
-		this.content = element.querySelector('.modal__content') as HTMLElement;
-		this.closeButtons = element.querySelectorAll('.modal__close');
+  constructor(root: string | HTMLElement = '#modal') {
+    const el = typeof root === 'string' ? document.querySelector(root) : root;
+    if (!el) throw new Error(`Modal root ${typeof root === 'string' ? root : '#[HTMLElement]'} not found`);
+    this.element = el as HTMLElement;
 
-		this.closeButtons.forEach(btn => btn.addEventListener('click', () => this.close()));
-		element.addEventListener('click', (e) => {
-			if (e.target === element) this.close();
-		});
+    const content = this.element.querySelector('.modal__content');
+    if (!content) throw new Error('Modal content (.modal__content) not found');
+    this.contentEl = content as HTMLElement;
 
-		document.addEventListener('keydown', (e) => {
-			if (e.key === 'Escape') this.close();
-		});
-	}
+    this.closeButtons = this.element.querySelectorAll('[data-action="modal:close"]');
 
-	setContent(content: HTMLElement | string) {
-	this.content.innerHTML = '';
+    this.element.addEventListener('click', (e) => {
+      if (e.target === this.element) this.close();
+    });
+    this.closeButtons.forEach((btn) =>
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.close();
+      })
+    );
+  }
 
-	if (typeof content === 'string') {
-		this.content.innerHTML = content;
-	} else {
-		this.content.appendChild(content);
-	}
-}
-
-
-	open() {
-		this.element.classList.add('modal_active');
-		document.querySelector('.page__wrapper')?.classList.add('page__wrapper_locked');
-	}
-
-	close() {
-		this.element.classList.remove('modal_active');
-		document.querySelector('.page__wrapper')?.classList.remove('page__wrapper_locked');
-	}
+  setContent(node: HTMLElement): void {
+    this.contentEl.replaceChildren(node);
+  }
+  open(): void {
+    this.element.classList.add('modal_active');
+    document.querySelector('.page__wrapper')?.classList.add('page__wrapper_locked');
+  }
+  close(): void {
+    this.element.classList.remove('modal_active');
+    document.querySelector('.page__wrapper')?.classList.remove('page__wrapper_locked');
+  }
+  isOpen(): boolean {
+    return this.element.classList.contains('modal_active');
+  }
 }

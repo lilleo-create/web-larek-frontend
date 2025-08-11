@@ -1,4 +1,5 @@
 import { IProduct } from '../../types';
+import { CDN_URL } from '../../utils/constants';
 
 export class CardCatalogView {
 	protected template: HTMLTemplateElement;
@@ -28,7 +29,7 @@ export class CardCatalogView {
 		priceEl.textContent = typeof product.price === 'string'
 			? product.price
 			: `${product.price} синапсов`;
-		imgEl.src = product.image;
+		imgEl.src = `${CDN_URL}/${product.image}`;
 		imgEl.alt = product.title;
 
 		card.dataset.id = product.id;

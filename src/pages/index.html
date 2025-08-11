@@ -39,22 +39,17 @@
 		</div>
 	</div>
 
-	<div class="modal" id="modal-basket">
-		<div class="modal__container">
-			<button class="modal__close" aria-label="закрыть"></button>
-			<div class="modal__content">
-				<div class="basket">
-					<h2 class="modal__title">Корзина</h2>
-					<ul class="basket__list">
-					</ul>
-					<div class="modal__actions">
-						<button class="button" data-next="order">Оформить</button>
-						<span class="basket__price"></span>
-					</div>
-				</div>
+	<template id="modal-basket">
+		<section class="modal modal__basket">
+			<h2 class="modal__title">Корзина</h2>
+			<ul class="basket"></ul>
+			<div class="modal__actions">
+				<span class="basket__price">0 синапсов</span>
+				<button class="button basket__submit" type="button">Оформить</button>
 			</div>
-		</div>
-	</div>
+		</section>
+	</template>
+	
 
 	<div class="modal" id="modal-order">
     <div class="modal__container">
@@ -180,6 +175,7 @@
 						<button name="card" type="button" class="button button_alt">Онлайн</button>
 						<button name="cash" type="button" class="button button_alt">При получении</button>
 					</div>
+					<input type="hidden" name="payment" value="">
 				</div>
 				<label class="order__field">
 					<span class="form__label modal__title">Адрес доставки</span>

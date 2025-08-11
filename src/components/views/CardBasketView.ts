@@ -1,29 +1,24 @@
-import { ICartItem } from '../../types';
-import { EventEmitter } from '../base/events';
-
 export class CardBasketView {
-	constructor(private template: HTMLTemplateElement) {}
+	private element: HTMLElement;
+	public onDelete: (index: number) => void = () => {};
 
-	render(item: ICartItem, index: number): HTMLElement {
-		const element = this.template.content.cloneNode(true) as HTMLElement;
+	constructor(template: HTMLTemplateElement) {
+		// Клонируем содержимое шаблона
+		this.element = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 
-		const indexEl = element.querySelector('.basket__item-index') as HTMLElement;
-		const titleEl = element.querySelector('.card__title') as HTMLElement;
-		const priceEl = element.querySelector('.card__price') as HTMLElement;
-		const buttonEl = element.querySelector('.basket__item-delete') as HTMLButtonElement;
-
-		indexEl.textContent = `${index + 1}`;
-		titleEl.textContent = item.title;
-		priceEl.textContent = `${item.price} синапсов`;
-
-		buttonEl.addEventListener('click', () => {
-			element.dispatchEvent(new CustomEvent('item:remove', {
-				bubbles: true,
-				detail: item.id
-			}));
+		// Подписываемся на кнопку удаления (делегирование)
+		this.element.querySelector('.basket__list')?.addEventListener('click', (e) => {
+			const target = e.target as HTMLElement;
+			if (target.classList.contains('basket__item-delete')) {
+				const index = Number(
+					target.closest('.basket__item')?.querySelector('.basket__item-index')?.textContent
+				);
+				if (!isNaN(index)) this.onDelete(index);
+			}
 		});
+	}
 
-		return element;
+	render(): HTMLElement {
+		return this.element;
 	}
 }
-

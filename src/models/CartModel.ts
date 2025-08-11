@@ -60,4 +60,11 @@ export class CartModel extends EventEmitter {
 			this.items = JSON.parse(data);
 		}
 	}
+	public removeItemById(id: string): void {
+		this.items = this.items.filter(it => it.id !== id);
+		this.emit('change', this.getItems());
+		this.saveToStorage();
+	}
+
+	
 }

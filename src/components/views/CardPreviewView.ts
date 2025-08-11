@@ -1,7 +1,7 @@
 import { IProduct } from '../../types';
 import { CartModel } from '../../models/CartModel';
 import { EventEmitter } from '../base/events';
-
+import { CDN_URL } from '../../utils/constants';
 export class CardPreviewView {
 	constructor(
 		private product: IProduct,
@@ -30,7 +30,7 @@ export class CardPreviewView {
 				? `${this.product.price} синапсов`
 				: this.product.price;
 
-		imgEl.src = this.product.image;
+		imgEl.src = `${CDN_URL}/${this.product.image}`;
 		imgEl.alt = this.product.title;
 
 		const updateButtonState = () => {
@@ -38,9 +38,15 @@ export class CardPreviewView {
 			buyButton.textContent = inCart ? 'Удалить из корзины' : 'Купить';
 		};
 
-		updateButtonState();
-		this.events.on('cart:change', updateButtonState);
 
+		if (this.product.disabled) {
+			buyButton.disabled = true;
+			buyButton.textContent = 'Недоступно';
+		} else {
+			updateButtonState();
+			this.events.on('cart:change', updateButtonState);
+		}
+		
 		buyButton.addEventListener('click', () => {
 			console.log('[CardPreviewView] Клик по кнопке');
 			if (this.product.disabled) return;
