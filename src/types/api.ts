@@ -6,3 +6,6 @@ export interface IApiProductResponse {
   price: number;
   image: string;
 }
+
+export interface ApiListResponse<T> { total: number; items: T[] }
+

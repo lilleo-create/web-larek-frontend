@@ -8,43 +8,49 @@ import { EventEmitter } from '../components/base/events';
 import { IProduct } from '../types';
 
 export class ProductPresenter {
-	constructor(
-		private catalogModel: CatalogModel,
-		private cartModel: CartModel,
-		private catalogView: CatalogView,
-		private modal: Modal,
-		private events: EventEmitter
-	) {}
-	
-	init(products: IProduct[]) {
-		this.catalogModel.setProducts(products);
-		this.catalogView.clear();
+  constructor(
+    private catalogModel: CatalogModel,
+    private cartModel: CartModel,
+    private catalogView: CatalogView,
+    private modal: Modal,
+    private events: EventEmitter
+  ) {}
 
-		products.forEach((product) => {
-			const card = new ProductCardView(this.catalogView.template, product);
-this.catalogView.addCard(card.getElement());
+  init(products: IProduct[]) {
+    this.catalogModel.setProducts(products);
+    this.catalogView.clear();
+		// где инициализируешь презентер (один раз)
+this.events.on('modal:close', () => this.modal.close());
 
-// стартовое состояние
-card.setInCart?.(this.cartModel.inCart(product.id));
 
-card.on('buy', ({ id }: { id: string }) => {
-  if (this.cartModel.inCart(id)) return;
+    products.forEach((product) => {
+      const card = new ProductCardView(this.catalogView.template, product);
+      this.catalogView.addCard(card.getElement());
 
-  this.cartModel.add({
-    id: product.id,
-    title: product.title,
-    price: typeof product.price === 'number' ? product.price : 0,
-  });
+      // стартовое состояние кнопки на карточке, если метод есть
+      (card as any).setInCart?.(this.cartModel.inCart(product.id));
 
-  card.setInCart?.(true);
-  this.events.emit('cart:changed'); // если нужен бейдж/итог
-			});
+      // купить → только добавить и поменять кнопку
+      card.on('buy', ({ id }: { id: string }) => {
+        if (this.cartModel.inCart(id)) return;
 
-			card.on('click', ({ id }: { id: string }) => {
-				const full = new CardPreviewView(product, this.cartModel, this.events).render();
-				this.modal.setContent(full);
-				this.modal.open();
-			});
-		});
-	}
+        this.cartModel.add({
+          id: product.id,
+          title: product.title,
+          price: typeof product.price === 'number' ? product.price : 0,
+          quantity: 1,
+        });
+
+        (card as any).setInCart?.(true);
+        this.events.emit('cart:changed');
+      });
+
+      // превью карточки
+      card.on('click', () => {
+        const full = new CardPreviewView(product, this.cartModel, this.events).render();
+        this.modal.setContent(full);
+        this.modal.open();
+      });
+    });
+  }
 }

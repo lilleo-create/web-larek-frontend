@@ -1,20 +1,31 @@
-// SuccessView.ts
 export class SuccessView {
-	constructor(private container: HTMLElement) {}
+  constructor(private root: HTMLElement) {}
 
-	render(title: string, description?: string): void {
-		this.container.innerHTML = `
-			<div class="order-success">
-				<h2 class="order-success__title">${title}</h2>
-				<p class="order-success__description">${description ?? ''}</p>
-				<button class="button order-success__close">За новыми покупками!</button>
-			</div>
-		`;
+  render(title: string, text: string) {
+    const wrap = document.createElement('div');
+    wrap.className = 'success';
 
-		this.container
-			.querySelector('.order-success__close')
-			?.addEventListener('click', () => {
-				this.container.dispatchEvent(new CustomEvent('success:close', { bubbles: true }));
-			});
-	}
+    // сохраняем твою разметку и классы
+    wrap.innerHTML = `
+<div class="order-success">
+  <h2 class="order-success__title">${title}</h2>
+  <p class="order-success__description">${text ?? ''}</p>
+  <button class="button order-success__close" data-action="success:close">За новыми покупками!</button>
+</div>`;
+
+    // вешаем обработчик на кнопку закрытия
+    const btn = wrap.querySelector('.order-success__close') as HTMLButtonElement | null;
+    if (btn) {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.root.dispatchEvent(new Event('success:close'));
+      });
+    }
+
+    this.root.replaceChildren(wrap);
+  }
+
+  onClose(cb: () => void) {
+    this.root.addEventListener('success:close', cb);
+  }
 }

@@ -1,22 +1,24 @@
+// models/UserModel.ts — ДОБАВИТЬ методы
 import { IUserData } from '../types';
-import { EventEmitter } from '../components/base/events';
 
 export class UserModel {
-    protected data: Partial<IUserData> = {};
+     validateOrder(data: IUserData) {
+    const hasAddress = data.address?.trim().length > 0;
+    const hasPayment = !!data.payment;
+    return {
+      ok: hasAddress && hasPayment,
+      errors: hasAddress ? '' : 'Необходимо указать адрес',
+    };
+  }
 
-    constructor(protected events: EventEmitter) {}
-
-    setData(newData: Partial<IUserData>) {
-        this.data = { ...this.data, ...newData };
-        this.events.emit('user:update', this.data);
-    }
-
-    getData(): Partial<IUserData> {
-        return this.data;
-    }
-
-    clear() {
-        this.data = {};
-        this.events.emit('user:update', this.data);
-    }
+  validateContacts(email: string, phone: string) {
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((email ?? '').trim());
+    const isPhone = (phone ?? '').replace(/\D/g, '').length >= 11;
+    return {
+      ok: isEmail && isPhone,
+      emailOk: isEmail,
+      phoneOk: isPhone,
+      errorText: !isEmail ? 'Введите корректный email' : (!isPhone ? 'Введите корректный телефон' : ''),
+    };
+  }
 }

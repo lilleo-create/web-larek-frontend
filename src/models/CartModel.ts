@@ -1,70 +1,34 @@
-import { ICartItem, ICartItemInput } from '../types';
+// models/CartModel.ts
 import { EventEmitter } from '../components/base/events';
-
-const CART_STORAGE_KEY = 'cart';
+import { ICartItem } from '../types';
 
 export class CartModel extends EventEmitter {
-	protected items: ICartItem[] = [];
+  private items: ICartItem[] = [];
 
-	constructor() {
-		super(); // важно вызывать super() для EventEmitter
-		this.loadFromStorage();
-		this.emit('change', this.getItems()); // заменил 'cart:change' на 'change' для единообразия
-	}
+  getItems() { return this.items.slice(); }
+  getTotal() { return this.items.reduce((s, i) => s + (i.price ?? 0), 0); }
 
-	getItems(): ICartItem[] {
-		return this.items;
-	}
+  inCart(id: string) {                    // ← добавили
+    return this.items.some(i => i.id === id);
+  }
 
-	getTotal(): number {
-		return this.items.reduce((sum, item) => sum + item.price, 0);
-	}
+  add(item: ICartItem) {
+    if (this.inCart(item.id)) return;     // один экземпляр
+    // гарантируем quantity
+    if (typeof (item as any).quantity !== 'number') (item as any).quantity = 1;
+    this.items.push(item);
+    this.emit('change', this.getItems());
+  }
 
-	add(item: ICartItemInput): void {
-		const exists = this.items.some(i => i.id === item.id);
-		if (!exists) {
-			const itemToAdd = { ...item, quantity: 1 };
-			console.log('[CartModel] pushing to items:', itemToAdd);
-			this.items.push(itemToAdd);
-			this.saveToStorage();
-			this.emit('change', this.getItems());
-		}
-	}
+  remove(id: string) {
+    const before = this.items.length;
+    this.items = this.items.filter(i => i.id !== id);
+    if (this.items.length !== before) this.emit('change', this.getItems());
+  }
 
-	remove(id: string): void {
-		const lengthBefore = this.items.length;
-		this.items = this.items.filter((i) => i.id !== id);
-		if (this.items.length !== lengthBefore) {
-			this.saveToStorage();
-			this.emit('change', this.getItems());
-		}
-	}
-
-	inCart(id: string): boolean {
-		return this.items.some(item => item.id === id);
-	}
-
-	clear(): void {
-		this.items = [];
-		this.saveToStorage();
-		this.emit('change', this.getItems());
-	}
-
-	protected saveToStorage(): void {
-		localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(this.items));
-	}
-
-	protected loadFromStorage(): void {
-		const data = localStorage.getItem(CART_STORAGE_KEY);
-		if (data) {
-			this.items = JSON.parse(data);
-		}
-	}
-	public removeItemById(id: string): void {
-		this.items = this.items.filter(it => it.id !== id);
-		this.emit('change', this.getItems());
-		this.saveToStorage();
-	}
-
-	
+  clear() {
+    if (this.items.length === 0) return;
+    this.items = [];
+    this.emit('change', this.getItems());
+  }
 }
