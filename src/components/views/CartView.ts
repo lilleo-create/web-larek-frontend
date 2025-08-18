@@ -3,81 +3,80 @@ import { ICartItem } from '../../types';
 import { EventEmitter } from '../base/events';
 
 export class CartView {
-  protected basketTemplate: HTMLTemplateElement;
-  protected itemTemplate: HTMLTemplateElement;
-  private counterEl: HTMLElement | null;
-
   constructor(
     protected events: EventEmitter,
-    basketTemplate: HTMLTemplateElement,
-    itemTemplate: HTMLTemplateElement
-  ) {
-    this.basketTemplate = basketTemplate;
-    this.itemTemplate = itemTemplate;
+    private basketTemplate: HTMLTemplateElement,   // <template id="basket">
+    private itemTemplate: HTMLTemplateElement      // <template id="card-basket">
+  ) {}
 
-    const basketButton = document.querySelector('.header__basket');
-    if (!basketButton) throw new Error('Cart button (.header__basket) not found');
-    basketButton.addEventListener('click', () => this.events.emit('cart:open'));
-
-    this.counterEl = document.querySelector('.header__basket-counter');
-  }
-
-  updateCounter(count: number) {
-    if (!this.counterEl) return;
-    this.counterEl.textContent = String(count);
-    this.counterEl.style.display = count > 0 ? 'block' : 'none';
-  }
+  updateCounter(_count: number): void {}
 
   render(items: ICartItem[], total: number): HTMLElement {
-    const basketElement = this.basketTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
+    const basketEl = this.basketTemplate.content.firstElementChild?.cloneNode(true) as HTMLElement;
+    if (!basketEl) throw new Error('Basket template is empty');
 
-    const list = basketElement.querySelector('.basket__list') as HTMLElement | null;
-    const totalEl = basketElement.querySelector('.basket__price') as HTMLElement | null;
-    const orderButton = basketElement.querySelector('.basket__button') as HTMLButtonElement | null;
-    if (!list || !totalEl || !orderButton) throw new Error('Basket template missing required elements');
+    // строго по твоему #basket
+    const list = basketEl.querySelector('.basket__list') as HTMLElement | null;
+    const actions = basketEl.querySelector('.modal__actions') as HTMLElement | null;
+    const totalEl = actions?.querySelector('.basket__price') as HTMLElement | null;
+    const orderBtn = actions?.querySelector('.basket__button') as HTMLButtonElement | null;
+
+    if (!list || !totalEl || !orderBtn) {
+      // диагностический лог: один раз покажет, чего именно не хватило
+      // (оставь на время, потом можно убрать)
+      console.error('[CartView] basket clone:', basketEl.outerHTML.slice(0, 4000));
+      console.error('[CartView] found:', {
+        list: !!list, actions: !!actions, totalEl: !!totalEl, orderBtn: !!orderBtn,
+      });
+      throw new Error('Basket template missing required elements (.basket__list / .basket__price / .basket__button)');
+    }
 
     list.replaceChildren();
 
     if (items.length === 0) {
-      const emptyEl = document.createElement('li');
-      emptyEl.textContent = 'Корзина пуста';
-      emptyEl.classList.add('basket__empty');
-      list.append(emptyEl);
-      orderButton.setAttribute('disabled', 'true');
+      const li = document.createElement('li');
+      li.className = 'basket__empty';
+      li.textContent = 'Корзина пуста';
+      list.append(li);
+      orderBtn.disabled = true;
     } else {
       items.forEach((item, index) => {
-        const itemEl = this.itemTemplate.content.firstElementChild!.cloneNode(true) as HTMLElement;
-        const titleEl = itemEl.querySelector('.card__title');
-        const priceEl = itemEl.querySelector('.card__price');
-        const idxEl = itemEl.querySelector('.basket__item-index');
-        const delBtn = itemEl.querySelector('.basket__item-delete');
+        const li = this.itemTemplate.content.firstElementChild?.cloneNode(true) as HTMLElement;
+        if (!li) throw new Error('Basket item template is empty');
 
-        if (!titleEl || !priceEl || !idxEl || !delBtn) {
-          throw new Error('Basket item template missing required elements');
+        // строго по твоему #card-basket
+        const idxEl   = li.querySelector('.basket__item-index') as HTMLElement | null;
+        const titleEl = li.querySelector('.card__title') as HTMLElement | null;
+        const priceEl = li.querySelector('.card__price') as HTMLElement | null;
+        const delBtn  = li.querySelector('.basket__item-delete') as HTMLButtonElement | null;
+
+        if (!idxEl || !titleEl || !priceEl || !delBtn) {
+          console.error('[CartView] item clone:', li.outerHTML);
+          throw new Error('Basket item template missing required elements (.basket__item-index / .card__title / .card__price / .basket__item-delete)');
         }
 
-        (titleEl as HTMLElement).textContent = item.title;
-        (priceEl as HTMLElement).textContent = `${item.price} синапсов`;
-        (idxEl as HTMLElement).textContent = String(index + 1);
+        idxEl.textContent = String(index + 1);
+        titleEl.textContent = item.title;
+        priceEl.textContent = `${item.price} синапсов`;
 
-        (delBtn as HTMLElement).addEventListener('click', (e) => {
+        delBtn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
           this.events.emit('cart:delete', { id: item.id });
         });
 
-        list.append(itemEl);
+        list.append(li);
       });
-      orderButton.removeAttribute('disabled');
+      orderBtn.disabled = false;
     }
 
-    totalEl!.textContent = `${total} синапсов`;
+    totalEl.textContent = `${total} синапсов`;
 
-    orderButton!.addEventListener('click', (e) => {
+    orderBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      this.events.emit('cart:order');
+      this.events.emit('cart:order', {});
     });
 
-    return basketElement;
+    return basketEl;
   }
 }

@@ -5,8 +5,14 @@ import { ICartItem } from '../types';
 export class CartModel extends EventEmitter {
   private items: ICartItem[] = [];
 
-  getItems() { return this.items.slice(); }
-  getTotal() { return this.items.reduce((s, i) => s + (i.price ?? 0), 0); }
+  public getItems() {
+    // items — твое приватное поле
+    return [...this.items]; // возвращаем копию
+  }
+
+  public getTotal() {
+    return this.items.reduce((sum, it) => sum + (it?.price ?? 0), 0);
+  }
 
   inCart(id: string) {                    // ← добавили
     return this.items.some(i => i.id === id);
@@ -31,4 +37,7 @@ export class CartModel extends EventEmitter {
     this.items = [];
     this.emit('change', this.getItems());
   }
+  // models/CartModel.ts
+
+
 }

@@ -1,76 +1,128 @@
+// src/components/views/UserView.ts
 import { IUserData } from '../../types';
 import { EventEmitter } from '../base/events';
 
 export class UserView {
-	private addressInput: HTMLInputElement;
-	private paymentInput: HTMLInputElement;
-	private nextButton: HTMLButtonElement;
-	private errorSpan: HTMLElement;
-	private onlineButton: HTMLButtonElement;
-	private cashButton: HTMLButtonElement;
+  private addressInput: HTMLInputElement;
+  private paymentInput: HTMLInputElement;                // скрытый input[name="payment"]
+  private nextButton: HTMLButtonElement | null;
+  private errorSpan: HTMLElement | null;
 
-	constructor(private form: HTMLFormElement, private events: EventEmitter) {
-		this.addressInput = this.form.querySelector('input[name="address"]');
-		this.paymentInput = this.form.querySelector('input[name="payment"]');
-		this.nextButton = this.form.querySelector('.button[data-next="contacts"]') ?? null;
-		this.errorSpan = this.form.querySelector('.form__error, .form__errors')!;
-	
-		this.onlineButton = this.form.querySelector('button[name="card"]');
-		this.cashButton = this.form.querySelector('button[name="cash"]');
-	}
-	
-	public getData(): IUserData {
-		return {
-			address: this.addressInput.value.trim(),
-			payment: this.paymentInput.value as 'online' | 'cash',
-			email: '',
-			phone: '',
-		};
-	}
+  // сами кнопки выбора оплаты
+  private onlineButton: HTMLButtonElement | null;
+  private cashButton: HTMLButtonElement | null;
 
-	public setButtonDisabled(value: boolean) {
-		this.nextButton.disabled = value;
-	}
+  constructor(private form: HTMLFormElement, private events: EventEmitter) {
+    // поля формы
+    this.addressInput = this.form.querySelector('input[name="address"]') as HTMLInputElement;
+    this.paymentInput = this.form.querySelector('input[name="payment"]') as HTMLInputElement;
 
-	public setErrors(error: string) {
-		this.errorSpan.textContent = error;
-	}
+    this.nextButton = this.form.querySelector('.button[data-next="contacts"]') as HTMLButtonElement | null;
+    this.errorSpan = this.form.querySelector('.form__error, .form__errors') as HTMLElement | null;
 
-	public setPaymentListeners(callback: () => void) {
-		if (!this.onlineButton || !this.cashButton || !this.paymentInput) return;
-	
-		this.onlineButton.addEventListener('click', () => {
-			this.setActivePayment('online');
-			this.paymentInput!.value = 'online';
-			callback();
-		});
-		this.cashButton.addEventListener('click', () => {
-			this.setActivePayment('cash');
-			this.paymentInput!.value = 'cash';
-			callback();
-		});
-	}
+    // возможные варианты селекторов для кнопок оплаты в разметке
+    this.onlineButton = (
+      this.form.querySelector('button[data-payment="online"]') ||
+      this.form.querySelector('button[name="online"]') ||
+      this.form.querySelector('button[name="card"]')
+    ) as HTMLButtonElement | null;
 
-	public setAddressInputListener(callback: () => void) {
-		if (!this.addressInput) return;
-		this.addressInput.addEventListener('input', () => {
-			console.log('[input] address changed:', this.addressInput.value);
-			callback();
-		});
-	}
+    this.cashButton = (
+      this.form.querySelector('button[data-payment="cash"]') ||
+      this.form.querySelector('button[name="cash"]')
+    ) as HTMLButtonElement | null;
 
-	public setNextButtonListener(callback: () => void) {
-		const nextButton = this.form.querySelector<HTMLButtonElement>('.button[data-next="contacts"]');
-		if (!nextButton) return;
-	
-		nextButton.addEventListener('click', (e) => {
-			e.preventDefault();
-			callback();
-		});
-	}
-	
-	private setActivePayment(type: 'online' | 'cash') {
-		this.onlineButton.classList.toggle('button_alt-active', type === 'online');
-		this.cashButton.classList.toggle('button_alt-active', type === 'cash');
-	}
+    // навешиваем обработчики
+    this.bind();
+    // первичная инициализация (подсветка уже выбранного значения, если есть)
+    this.syncFromInput();
+    this.validate();
+  }
+
+  /** Текущие значения формы */
+  public getData(): Partial<IUserData> {
+    return {
+      address: this.addressInput?.value?.trim() || '',
+      payment: this.paymentInput?.value as 'online' | 'cash' | undefined,
+    };
+  }
+
+  /** Устанавливаем значения в форму */
+  public setData(data: Partial<IUserData>) {
+    if (typeof data.address === 'string') this.addressInput.value = data.address;
+    if (data.payment === 'online' || data.payment === 'cash') {
+      this.setPayment(data.payment);
+    }
+    this.validate();
+  }
+
+  /** Коллбэк на кнопку «Далее» */
+  public onNext(callback: () => void) {
+    if (!this.nextButton) return;
+    this.nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (this.validate()) callback();
+    });
+  }
+
+  // ====== внутреннее ======
+
+  private bind() {
+    // адрес
+    this.addressInput?.addEventListener('input', () => this.validate());
+
+    // оплата — онлайн
+    this.onlineButton?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.setPayment('online');
+      this.validate();
+    });
+
+    // оплата — при получении
+    this.cashButton?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.setPayment('cash');
+      this.validate();
+    });
+  }
+
+  /** выставляем payment и подсветку кнопок */
+  private setPayment(type: 'online' | 'cash') {
+    if (this.paymentInput) this.paymentInput.value = type;
+    this.setActivePayment(type);
+  }
+
+  /** читаем payment из скрытого инпута и подсвечиваем кнопки (на случай повторного открытия формы) */
+  private syncFromInput() {
+    const val = (this.paymentInput?.value as 'online' | 'cash' | '') || '';
+    if (val === 'online' || val === 'cash') this.setActivePayment(val);
+  }
+
+  /** валидация формы: адрес + выбор оплаты */
+  private validate(): boolean {
+    const addressOk = !!this.addressInput?.value?.trim();
+    const paymentVal = this.paymentInput?.value;
+    const paymentOk = paymentVal === 'online' || paymentVal === 'cash';
+
+    const ok = addressOk && paymentOk;
+
+    if (this.nextButton) this.nextButton.disabled = !ok;
+    if (this.errorSpan) {
+      this.errorSpan.textContent = ok ? '' : (!addressOk ? 'Укажите адрес' : 'Выберите способ оплаты');
+    }
+    return ok;
+  }
+
+  private setActivePayment(type: 'online' | 'cash') {
+    // класс подсветки по методичке
+    const cls = 'button_alt-active';
+    if (this.onlineButton) {
+      this.onlineButton.classList.toggle(cls, type === 'online');
+      this.onlineButton.setAttribute('aria-pressed', String(type === 'online'));
+    }
+    if (this.cashButton) {
+      this.cashButton.classList.toggle(cls, type === 'cash');
+      this.cashButton.setAttribute('aria-pressed', String(type === 'cash'));
+    }
+  }
 }

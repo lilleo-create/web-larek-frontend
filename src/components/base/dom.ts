@@ -15,7 +15,14 @@ export const priceElement = document.querySelector('.basket__price') as HTMLElem
 export const orderButton = document.querySelector('.basket .button[data-next="order"]') as HTMLButtonElement;
 
 export const catalogTemplate = document.getElementById('card-catalog') as HTMLTemplateElement;
-export const basketTemplate = document.getElementById('card-basket') as HTMLTemplateElement;
+export const basketTemplate =
+  document.querySelector<HTMLTemplateElement>('#basket')
+  ?? (() => { throw new Error('Basket template not found'); })();
+
+export const cardBasketTemplate =
+  document.querySelector<HTMLTemplateElement>('#card-basket')
+  ?? (() => { throw new Error('Card basket template not found'); })();
 
 
+  
 export const addressForm = document.querySelector('#modal-order .form') as HTMLFormElement;

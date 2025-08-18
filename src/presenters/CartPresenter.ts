@@ -1,11 +1,11 @@
-// src/presenters/CartPresenter.ts
+import { EventEmitter } from '../components/base/events';
 import { CartModel } from '../models/CartModel';
 import { CartView } from '../components/views/CartView';
-import { EventEmitter } from '../components/base/events';
 import Modal from '../components/views/ModalView';
+
+import { addressForm } from '../components/base/dom';
 import { UserView } from '../components/views/UserView';
 import { UserFormPresenter } from './UserFormPresenter';
-import { ICartItem } from '../types';
 
 export class CartPresenter {
   constructor(
@@ -15,65 +15,80 @@ export class CartPresenter {
     private modal: Modal
   ) {
     // открыть корзину
-    this.events.on('cart:open', this.openCart);
+    this.events.on('cart:open', () => this.open());
 
-    // удалить товар (CartView шлёт { index })
-    this.events.on('cart:delete', ({ index }: { index: number }) => {
-      const items = this.model.getItems();
-      const item = items[index];
-      if (item) this.model.remove(item.id);
+    // изменения корзины
+    this.events.on('cart:changed', () => {
+      this.emitCartCount();
+      this.refreshIfOpen();
     });
 
-    // оформить заказ -> открыть шаг "Способ оплаты + адрес"
-    this.events.on('cart:order', this.openOrder);
+    // очистка корзины
+    this.events.on('cart:clear', () => {
+      this.emitCartCount(0);
+      this.refreshIfOpen();
+    });
 
-    // очистить корзину
-    this.events.on('cart:clear', () => this.model.clear());
+    // удаление позиции
+    this.events.on('cart:delete', ({ id }: { id: string }) => {
+      const m: any = this.model as any;
+      if (typeof m.remove === 'function') m.remove(id);
+      this.emitCartCount();
+      this.refreshIfOpen();
+    });
 
-    // обновления модели корзины
-    this.model.on('change', (items: ICartItem[]) => {
-      // счётчик у иконки
-      this.updateCartCount(items.length);
-
-      // если модалка корзины открыта — перерисуем её содержимое
-      if (this.modal.element.classList.contains('modal_active')) {
-        const el = this.view.render(items, this.model.getTotal());
-        this.modal.setContent(el);
+    // оформить заказ — показать форму адреса/оплаты
+    this.events.on('cart:order', () => {
+      if (!(addressForm instanceof HTMLFormElement)) {
+        console.error('addressForm not found or not a form element');
+        return;
       }
+      this.modal.setContent(addressForm);
+      this.modal.open();
+
+      // инициализируем форму заказа (шаг 1)
+      const userView = new UserView(addressForm, this.events);
+      new UserFormPresenter(userView, this.events, this.modal);
     });
 
-    // первичное состояние счётчика
-    this.updateCartCount(this.model.getItems().length);
+    // бейдж при старте
+    this.emitCartCount();
   }
 
-  private openCart = () => {
-    const items = this.model.getItems();
-    const total = this.model.getTotal();
-    const cartElement = this.view.render(items, total);
-    this.modal.setContent(cartElement);
-    this.modal.open();
-  };
+  private getItems(): any[] {
+    const m: any = this.model as any;
+    if (typeof m.getItems === 'function') return m.getItems();
+    return Array.isArray(m.items) ? [...m.items] : [];
+  }
 
-  private openOrder = () => {
-    const template = document.querySelector<HTMLTemplateElement>('#order');
-    if (!template) throw new Error('Template #order not found');
+  private getTotal(): number {
+    const m: any = this.model as any;
+    if (typeof m.getTotal === 'function') return m.getTotal();
+    return this.getItems().reduce((sum, it) => sum + (it?.price ?? 0), 0);
+  }
 
-    const content = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
-    const form = content as HTMLFormElement;
+  private emitCartCount(forceCount?: number): void {
+    const count = forceCount ?? this.getItems().length;
+    this.events.emit('cart:count', { count });
+  }
 
+  private refreshIfOpen(): void {
+    const isOpen =
+      typeof (this.modal as any).isOpen === 'function'
+        ? (this.modal as any).isOpen()
+        : false;
+
+    if (isOpen) {
+      const content = this.view.render(this.getItems(), this.getTotal());
+      this.modal.setContent(content);
+    }
+  }
+
+  private open(): void {
+    const content = this.view.render(this.getItems(), this.getTotal());
     this.modal.setContent(content);
-
-    // подключаем форму заказа
-    const userView = new UserView(form, this.events);
-    new UserFormPresenter(userView, this.events, this.modal);
-
     this.modal.open();
-  };
-
-  private updateCartCount(count: number) {
-    const el = document.querySelector('.header__basket-counter') as HTMLElement | null;
-    if (!el) return;
-    el.textContent = String(count);
-    
   }
 }
+
+export default CartPresenter;

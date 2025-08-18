@@ -26,7 +26,7 @@ export default class Modal {
     );
   }
 
-  setContent(node: HTMLElement): void {
+  setContent(node: HTMLElement) {
     this.contentEl.replaceChildren(node);
   }
   open(): void {
