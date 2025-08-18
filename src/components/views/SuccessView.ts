@@ -4,8 +4,6 @@ export class SuccessView {
   render(title: string, text: string) {
     const wrap = document.createElement('div');
     wrap.className = 'success';
-
-    // сохраняем твою разметку и классы
     wrap.innerHTML = `
 <div class="order-success">
   <h2 class="order-success__title">${title}</h2>
@@ -13,7 +11,6 @@ export class SuccessView {
   <button class="button order-success__close" data-action="success:close">За новыми покупками!</button>
 </div>`;
 
-    // вешаем обработчик на кнопку закрытия
     const btn = wrap.querySelector('.order-success__close') as HTMLButtonElement | null;
     if (btn) {
       btn.addEventListener('click', (e) => {

@@ -14,15 +14,13 @@ export class UserFormPresenter {
     private events: EventEmitter,
     private modal: Modal
   ) {
-    // UserView сам навешивает обработчики оплаты/адреса и включает «Далее».
-    // Здесь реагируем только на клик «Далее».
     this.view.onNext(() => this.handleNext());
   }
 
   private handleNext() {
-    const data = this.view.getData(); // UserView возвращает текущие значения
-    const res = this.userModel.validateOrder(data as IUserData); // адрес + способ оплаты
-    if (!res.ok) return; // UserView уже управляет ошибками/дизейблом
+    const data = this.view.getData();
+    const res = this.userModel.validateOrder(data as IUserData);
+    if (!res.ok) return;
 
     this.openContactModal();
   }

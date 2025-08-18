@@ -1,4 +1,3 @@
-// components/views/HeaderView.ts
 import { EventEmitter } from '../base/events';
 
 export default class HeaderView {
@@ -15,9 +14,7 @@ export default class HeaderView {
 
     this.counterEl = this.root.querySelector('.header__basket-counter');
 
-    // Клик по корзине -> событие на шину
     this.basketBtn.addEventListener('click', () => {
-      // передаём пустой объект, т.к. EventEmitter ожидает payload типа object
       this.events.emit('cart:open', {});
     });
   }

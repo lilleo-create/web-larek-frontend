@@ -1,7 +1,6 @@
 import { IProduct,  } from '../../types/product';
 import { IApiProductResponse  } from '../../types/api';
 
-// Добавь маппинг
 function getCategoryType(category: string): IProduct['categoryType'] {
 	const map: Record<string, IProduct['categoryType']> = {
 		'софт-скил': 'soft',

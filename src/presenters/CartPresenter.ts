@@ -8,28 +8,31 @@ import { UserView } from '../components/views/UserView';
 import { UserFormPresenter } from './UserFormPresenter';
 
 export class CartPresenter {
+  private basketShown = false;
+
   constructor(
     private model: CartModel,
     private view: CartView,
     private events: EventEmitter,
     private modal: Modal
   ) {
-    // открыть корзину
     this.events.on('cart:open', () => this.open());
-
-    // изменения корзины
     this.events.on('cart:changed', () => {
       this.emitCartCount();
       this.refreshIfOpen();
     });
 
-    // очистка корзины
     this.events.on('cart:clear', () => {
+      const m: any = this.model as any;
+      if (typeof m.clear === 'function') {
+        m.clear();
+      } else {
+        this.events.emit('cart:changed', {});
+      }
       this.emitCartCount(0);
       this.refreshIfOpen();
     });
 
-    // удаление позиции
     this.events.on('cart:delete', ({ id }: { id: string }) => {
       const m: any = this.model as any;
       if (typeof m.remove === 'function') m.remove(id);
@@ -37,7 +40,6 @@ export class CartPresenter {
       this.refreshIfOpen();
     });
 
-    // оформить заказ — показать форму адреса/оплаты
     this.events.on('cart:order', () => {
       if (!(addressForm instanceof HTMLFormElement)) {
         console.error('addressForm not found or not a form element');
@@ -46,12 +48,12 @@ export class CartPresenter {
       this.modal.setContent(addressForm);
       this.modal.open();
 
-      // инициализируем форму заказа (шаг 1)
+      this.basketShown = false;
+
       const userView = new UserView(addressForm, this.events);
       new UserFormPresenter(userView, this.events, this.modal);
     });
 
-    // бейдж при старте
     this.emitCartCount();
   }
 
@@ -73,21 +75,18 @@ export class CartPresenter {
   }
 
   private refreshIfOpen(): void {
-    const isOpen =
-      typeof (this.modal as any).isOpen === 'function'
-        ? (this.modal as any).isOpen()
-        : false;
+    if (!this.modal.isOpen()) return;
+    if (!this.basketShown) return;
 
-    if (isOpen) {
-      const content = this.view.render(this.getItems(), this.getTotal());
-      this.modal.setContent(content);
-    }
+    const content = this.view.render(this.getItems(), this.getTotal());
+    this.modal.setContent(content);
   }
 
   private open(): void {
     const content = this.view.render(this.getItems(), this.getTotal());
     this.modal.setContent(content);
     this.modal.open();
+    this.basketShown = true;
   }
 }
 

@@ -35,7 +35,6 @@ export class ProductCardView extends EventEmitter {
 		imgEl.src = `${CDN_URL}/${product.image}`;
 		imgEl.alt = product.title;
 
-		// Кнопка "Купить" — ищем по data-атрибуту, затем по классу, затем любой button/a внутри карточки
 		this.buyBtn =
 			(this.element.querySelector('[data-role="buy"]') as HTMLButtonElement | HTMLAnchorElement) ||
 			(this.element.querySelector('.card__button') as HTMLButtonElement | HTMLAnchorElement) ||
@@ -43,7 +42,6 @@ export class ProductCardView extends EventEmitter {
 			undefined;
 
 		if (this.buyBtn) {
-			// если это <button>, запрещаем submit по умолчанию
 			if (this.buyBtn instanceof HTMLButtonElement) {
 				this.buyBtn.type = 'button';
 			}
@@ -53,14 +51,11 @@ export class ProductCardView extends EventEmitter {
 				this.emit('buy', { id: this.product.id });
 			});
 		}
-
-		// Эмит клика по карточке (для открытия превью)
 		this.element.addEventListener('click', () => {
 			this.emit('click', { id: this.product.id });
 		});
 	}
 
-	// Обновление состояния кнопки после добавления в корзину
 	public setInCart(inCart: boolean) {
 		if (!this.buyBtn) return;
 		if (inCart) {

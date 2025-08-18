@@ -1,5 +1,3 @@
-// только DOM-элементы
-
 export const catalogElement = document.querySelector('.gallery') as HTMLElement;
 export const cartElement = document.querySelector('.basket__list') as HTMLElement;
 export const userForm = document.querySelector('#modal-contacts .form') as HTMLFormElement;
@@ -23,6 +21,4 @@ export const cardBasketTemplate =
   document.querySelector<HTMLTemplateElement>('#card-basket')
   ?? (() => { throw new Error('Card basket template not found'); })();
 
-
-  
 export const addressForm = document.querySelector('#modal-order .form') as HTMLFormElement;

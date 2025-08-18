@@ -3,10 +3,8 @@ export class CardBasketView {
 	public onDelete: (index: number) => void = () => {};
 
 	constructor(template: HTMLTemplateElement) {
-		// Клонируем содержимое шаблона
 		this.element = template.content.firstElementChild!.cloneNode(true) as HTMLElement;
 
-		// Подписываемся на кнопку удаления (делегирование)
 		this.element.querySelector('.basket__list')?.addEventListener('click', (e) => {
 			const target = e.target as HTMLElement;
 			if (target.classList.contains('basket__item-delete')) {

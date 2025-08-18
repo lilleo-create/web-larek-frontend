@@ -1,4 +1,3 @@
-// models/UserModel.ts — ДОБАВИТЬ методы
 import { IUserData } from '../types';
 
 export class UserModel {
