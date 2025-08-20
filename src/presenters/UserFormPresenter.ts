@@ -1,28 +1,38 @@
 import { IUserData } from '../types';
 import { EventEmitter } from '../components/base/events';
-import { UserView } from '../components/views/UserView';
+import OrderView from '../components/views/OrderView';
 import Modal from '../components/views/ModalView';
 import { SuccessView } from '../components/views/SuccessView';
 import { ContactView } from '../components/views/ContactView';
-import { UserModel } from '../models/UserModel';
+import UserModel from '../models/UserModel';
 
 export class UserFormPresenter {
   private userModel = new UserModel();
 
   constructor(
-    private view: UserView,
+    private view: OrderView,
     private events: EventEmitter,
     private modal: Modal
   ) {
-    this.view.onNext(() => this.handleNext());
-  }
+    // Шаг 1: адрес + оплата — подписки НЕ через events, а напрямую на OrderView
+    this.view.onChange((data: Pick<IUserData, 'address' | 'payment'>) => {
+      const res = this.userModel.validateOrder(data as IUserData);
+      this.view.showOrderErrors(res);
+      this.view.setNextDisabled(!res.ok);
+    });
 
-  private handleNext() {
-    const data = this.view.getData();
-    const res = this.userModel.validateOrder(data as IUserData);
-    if (!res.ok) return;
+    this.view.onNext((data: Pick<IUserData, 'address' | 'payment'>) => {
+      const res = this.userModel.validateOrder(data as IUserData);
+      this.view.showOrderErrors(res);
+      if (!res.ok) return;
+      this.openContactModal();
+    });
 
-    this.openContactModal();
+    // Инициализация состояния формы шага 1
+    const initData = this.view.getOrderData();
+    const initRes = this.userModel.validateOrder(initData as IUserData);
+    this.view.showOrderErrors(initRes);
+    this.view.setNextDisabled(!initRes.ok);
   }
 
   // Шаг 2: контакты
@@ -32,32 +42,24 @@ export class UserFormPresenter {
     this.modal.setContent(formEl);
     this.modal.open();
 
-    let touched = { email: false, phone: false };
-
-    const validate = () => {
+    const applyContactsValidation = () => {
       const { email, phone } = contactView.getData();
       const result = this.userModel.validateContacts(email, phone);
+      contactView.setErrors(result.errorText || '');
       contactView.setSubmitDisabled(!result.ok);
-
-      if (touched.email && !result.emailOk) {
-        contactView.setErrors('Введите корректный email');
-      } else if (touched.phone && !result.phoneOk) {
-        contactView.setErrors('Введите корректный телефон');
-      } else {
-        contactView.setErrors('');
-      }
     };
 
-    contactView.onEmailInput(() => { touched.email = true; validate(); });
-    contactView.onPhoneInput(() => { touched.phone = true; validate(); });
+    // У этих методов должен быть РОВНО один аргумент — handler
+    contactView.onEmailInput(applyContactsValidation);
+    contactView.onPhoneInput(applyContactsValidation);
 
+    // Инициализация
     contactView.setSubmitDisabled(true);
     contactView.setErrors('');
+    applyContactsValidation();
 
     contactView.onSubmit(() => {
-      touched = { email: true, phone: true };
-      validate();
-
+      applyContactsValidation();
       const { email, phone } = contactView.getData();
       const result = this.userModel.validateContacts(email, phone);
       if (!result.ok) return;
@@ -72,7 +74,7 @@ export class UserFormPresenter {
     const successView = new SuccessView(container);
     successView.render('Заказ оформлен', 'Спасибо за покупку!');
 
-    successView.onClose(() => {
+    successView.onClose((): void => {
       this.modal.close();
       this.events.emit('cart:clear');
       this.events.emit('ui:scrollTop');

@@ -56,6 +56,20 @@ events.on('ui:scrollTop', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
+{
+  const m: any = cartModel as any;
+  const items = typeof m.getItems === 'function' ? m.getItems() : (Array.isArray(m.items) ? m.items : []);
+  headerView.setCartCount(items.length);
+}
+
+events.on('cart:updated:quiet', ({ count }: { count: number }) => {
+  headerView.setCartCount(count);
+});
+
+events.on('cart:clear', () => {
+  headerView.setCartCount(0);
+});
+
 // =============== ДАННЫЕ ===============
 api.getProducts()
   .then((products) => {

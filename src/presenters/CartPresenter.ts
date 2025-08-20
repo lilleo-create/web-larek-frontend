@@ -4,7 +4,7 @@ import { CartView } from '../components/views/CartView';
 import Modal from '../components/views/ModalView';
 
 import { addressForm } from '../components/base/dom';
-import { UserView } from '../components/views/UserView';
+import OrderView from '../components/views/OrderView';
 import { UserFormPresenter } from './UserFormPresenter';
 
 export class CartPresenter {
@@ -31,6 +31,7 @@ export class CartPresenter {
       }
       this.emitCartCount(0);
       this.refreshIfOpen();
+      this.emitCartQuietUpdate();
     });
 
     this.events.on('cart:delete', ({ id }: { id: string }) => {
@@ -45,16 +46,28 @@ export class CartPresenter {
         console.error('addressForm not found or not a form element');
         return;
       }
+
+      // Шаг 1: адрес + оплата
       this.modal.setContent(addressForm);
       this.modal.open();
-
       this.basketShown = false;
 
-      const userView = new UserView(addressForm, this.events);
+      // ВАЖНО: конструктор OrderView принимает ТОЛЬКО форму
+      const userView = new OrderView(addressForm);
+
+      // Дальше управляет UserFormPresenter (свяжет View ↔ Model)
       new UserFormPresenter(userView, this.events, this.modal);
     });
 
     this.emitCartCount();
+  }
+
+  private emitCartQuietUpdate() {
+    const m: any = this.model as any;
+    const items = typeof m.getItems === 'function' ? m.getItems() : (Array.isArray(m.items) ? m.items : []);
+    const count = items.length;
+    const total = items.reduce((s: number, it: any) => s + (Number(it?.price) || 0), 0);
+    this.events.emit('cart:updated:quiet', { count, total });
   }
 
   private getItems(): any[] {

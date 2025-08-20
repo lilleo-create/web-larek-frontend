@@ -37,6 +37,13 @@ export class ProductPresenter {
           price: typeof product.price === 'number' ? product.price : 0,
           quantity: 1,
         });
+        
+        const m: any = this.cartModel as any;
+        const items = typeof m.getItems === 'function' ? m.getItems() : (Array.isArray(m.items) ? m.items : []);
+        this.events.emit('cart:updated:quiet', {
+          count: items.length,
+          total: items.reduce((s: number, it: any) => s + (Number(it?.price) || 0), 0),
+        });
 
         (card as any).setInCart?.(true);
         this.events.emit('cart:changed');
