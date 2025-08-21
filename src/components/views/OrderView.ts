@@ -1,216 +1,149 @@
-// src/components/views/OrderView.ts
-import { IUserData } from '../../types';
-import { EventEmitter } from '../base/events';
+import type { OrderValidationResult } from '../../models/UserModel';
 
-export type OrderValidationResult = {
-  ok: boolean;
-  addressOk: boolean;
-  paymentOk: boolean;
-  addressError?: string;
-  paymentError?: string;
-  errors?: string;
-};
+type Payment = 'online' | 'cash';
+type PaymentMaybe = Payment | '';
 
-export class OrderView {
-  private root: HTMLElement;
-  private form: HTMLFormElement;
+export default class OrderView {
+  private form!: HTMLFormElement;
 
-  private addressInput: HTMLInputElement | HTMLTextAreaElement;
-  private paymentInput: HTMLInputElement | null; // если храните значение в hidden/radio
-  private onlineButton: HTMLButtonElement | null;
-  private cashButton: HTMLButtonElement | null;
-  private nextButton: HTMLButtonElement | null;
+  private addressInput!: HTMLInputElement;
+  private paymentInput!: HTMLInputElement;
 
-  private addressErrorEl: HTMLElement | null;
-  private paymentErrorEl: HTMLElement | null;
+  private btnOnline!: HTMLButtonElement | null;
+  private btnCash!: HTMLButtonElement | null;
+  private nextBtn!: HTMLButtonElement | null;
+  private errorEl!: HTMLElement | null;
+  
 
-  private addressFieldEl: HTMLElement;
-  private paymentGroupEl: HTMLElement;
+  private touched = { address: false, payment: false, submitted: false };
 
-  private emitter = new EventEmitter();
+  private onChangeHandler?: (data: { address: string; payment: PaymentMaybe }) => void;
+  private onNextHandler?: (data: { address: string; payment: PaymentMaybe }) => void;
 
-  constructor(rootSelector = '#order') {
-    const root = document.querySelector(rootSelector);
-    if (!root) throw new Error(`OrderView: root ${rootSelector} not found`);
-    this.root = root as HTMLElement;
+  constructor(selector = '#order') {
+    const root = document.querySelector(selector);
+    if (!root) throw new Error(`OrderView: root not found by selector ${selector}`);
 
-    this.form = (this.root.matches('form') ? this.root : this.root.querySelector('form')) as HTMLFormElement;
-    if (!this.form) throw new Error('OrderView: form not found');
+    if (root instanceof HTMLTemplateElement) {
+      const tplForm = root.content.querySelector('form');
+      if (!tplForm) throw new Error('OrderView: form not found in template');
+      this.form = tplForm.cloneNode(true) as HTMLFormElement;
+    } else {
+      const maybeForm = root.matches('form') ? root : root.querySelector('form');
+      if (!maybeForm) throw new Error('OrderView: form not found');
+      this.form = maybeForm as HTMLFormElement;
+    }
 
-    // Поля
-    this.addressInput =
-      (this.form.querySelector('[name="address"]') as HTMLInputElement | HTMLTextAreaElement) ||
-      (() => {
-        throw new Error('OrderView: [name="address"] not found');
-      })();
+    this.addressInput = this.form.querySelector('input[name="address"]') as HTMLInputElement;
+    this.paymentInput = this.form.querySelector('input[name="payment"]') as HTMLInputElement;
+    this.btnOnline = this.form.querySelector<HTMLButtonElement>('button[name="card"]');
+    this.btnCash = this.form.querySelector<HTMLButtonElement>('button[name="cash"]');
+    this.nextBtn = this.form.querySelector<HTMLButtonElement>('[data-next="contacts"]');
+    
 
-    // Может быть hidden input для оплаты или радиокнопки
-    this.paymentInput =
-      (this.form.querySelector('input[name="payment"][type="hidden"]') as HTMLInputElement) ||
-      null;
+    this.errorEl =
+      this.form.querySelector<HTMLElement>('.form__errors') ||
+      this.form.querySelector<HTMLElement>('.form__error');
 
-    // Кнопки выбора оплаты (если используются)
-    this.onlineButton = (
-      (this.form.querySelector('button[data-payment="online"]') as HTMLButtonElement) ||
-      (this.form.querySelector('button[name="online"]') as HTMLButtonElement)
-    ) || null;
-
-    this.cashButton = (
-      (this.form.querySelector('button[data-payment="cash"]') as HTMLButtonElement) ||
-      (this.form.querySelector('button[name="cash"]') as HTMLButtonElement)
-    ) || null;
-
-    // Кнопка «далее/оформить»
-    this.nextButton = (this.form.querySelector('[type="submit"]') as HTMLButtonElement) || null;
-
-    // Ошибки: поддержим несколько вариантов разметки
-    this.addressErrorEl =
-      (this.form.querySelector('[data-error-for="address"]') as HTMLElement) ||
-      (this.form.querySelector('[data-error="address"]') as HTMLElement) ||
-      (this.form.querySelector('#address-error') as HTMLElement) ||
-      null;
-
-    this.paymentErrorEl =
-      (this.form.querySelector('[data-error-for="payment"]') as HTMLElement) ||
-      (this.form.querySelector('[data-error="payment"]') as HTMLElement) ||
-      (this.form.querySelector('#payment-error') as HTMLElement) ||
-      null;
-
-    // Контейнеры для подсветки
-    this.addressFieldEl =
-      (this.addressInput.closest('.form__field') as HTMLElement) ||
-      (this.addressInput.parentElement as HTMLElement) ||
-      this.form;
-
-    const paymentAnchor =
-      (this.paymentInput?.closest?.('.form__field') as HTMLElement) ||
-      (this.onlineButton?.parentElement as HTMLElement) ||
-      (this.cashButton?.parentElement as HTMLElement) ||
-      this.form;
-
-      
-    this.paymentGroupEl = paymentAnchor;
-
-    this.bindDomEvents();
+    if (!this.addressInput || !this.paymentInput) {
+      throw new Error('OrderView: required inputs not found');
+    }
+    this.updatePaymentButtons();
+    this.initListeners();
   }
 
-  // === Публичное API ===
+  render(): HTMLFormElement {
+    return this.form;
+  }
 
-  getOrderData(): Pick<IUserData, 'address' | 'payment'> {
+  onChange(handler: (data: { address: string; payment: PaymentMaybe }) => void): void {
+    this.onChangeHandler = handler;
+  }
+
+  onNext(handler: (data: { address: string; payment: PaymentMaybe }) => void): void {
+    this.onNextHandler = handler;
+  }
+
+  getOrderData(): { address: string; payment: PaymentMaybe } {
     return {
-      address: String((this.addressInput as HTMLInputElement).value ?? '').trim(),
+      address: (this.addressInput.value ?? '').trim(),
       payment: this.getPayment(),
     };
   }
 
-  setOrderData(data: Partial<IUserData>) {
-    if (typeof data.address === 'string') {
-      (this.addressInput as HTMLInputElement).value = data.address;
-    }
-    if (typeof data.payment === 'string' && data.payment) {
-      this.setPayment(data.payment);
-    }
+  showOrderErrors(res: OrderValidationResult): void {
+  if (!this.errorEl) return;
+
+  const interacted =
+    this.touched.address || this.touched.payment || this.touched.submitted;
+
+  if (!interacted) {
+    this.errorEl.textContent = '';
+    return;
+  }
+  
+  if (!res.addressOk) {
+    this.errorEl.textContent = res.addressError || 'Введите адрес';
+  } else if (!res.paymentOk) {
+    this.errorEl.textContent = 'Выберите способ оплаты';
+  } else {
+    this.errorEl.textContent = '';
   }
 
-  showOrderErrors(res: OrderValidationResult) {
-    // Адрес
-    if (this.addressErrorEl) this.addressErrorEl.textContent = res.addressError || '';
-    this.toggleInvalid(this.addressFieldEl, !res.addressOk);
+  this.updatePaymentButtons();
+}
+public setNextDisabled(disabled: boolean): void {
+  if (this.nextBtn) this.nextBtn.disabled = disabled;
+}
 
-    // Оплата
-    if (this.paymentErrorEl) this.paymentErrorEl.textContent = res.paymentError || '';
-    this.toggleInvalid(this.paymentGroupEl, !res.paymentOk);
+  // ===== внутреннее =====
 
-    // Визуально подсветим активную оплату
-    if (res.paymentOk) this.setActivePayment(this.getPayment() === 'online' ? 'online' : 'cash');
-  }
+  private initListeners(): void {
+    this.btnOnline?.addEventListener('click', () => {
+      this.touched.payment = true;
+      this.setPayment('online');
+      this.updatePaymentButtons();
+      this.emitChange();
+    });
 
-  clearOrderErrors() {
-    if (this.addressErrorEl) this.addressErrorEl.textContent = '';
-    if (this.paymentErrorEl) this.paymentErrorEl.textContent = '';
-    this.toggleInvalid(this.addressFieldEl, false);
-    this.toggleInvalid(this.paymentGroupEl, false);
-  }
+    this.btnCash?.addEventListener('click', () => {
+      this.touched.payment = true;
+      this.setPayment('cash');
+      this.updatePaymentButtons();
+      this.emitChange();
+    });
 
-  setNextDisabled(disabled: boolean) {
-    if (this.nextButton) this.nextButton.disabled = disabled;
-  }
+    this.addressInput.addEventListener('input', () => {
+      this.touched.address = true;
+      this.emitChange();
+    });
 
-  onChange(handler: (data: Pick<IUserData, 'address' | 'payment'>) => void) {
-    this.emitter.on('change', handler);
-  }
-
-  onNext(handler: (data: Pick<IUserData, 'address' | 'payment'>) => void) {
-    this.emitter.on('next', handler);
-  }
-
-  // === Внутреннее ===
-
-  private bindDomEvents() {
-    // Ввод адреса
-    this.addressInput.addEventListener('input', () => this.emitChange());
-
-    // Клики по кнопкам оплаты
-    if (this.onlineButton) {
-      this.onlineButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.setPayment('online');
-        this.emitChange();
-      });
-    }
-    if (this.cashButton) {
-      this.cashButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.setPayment('cash');
-        this.emitChange();
-      });
-    }
-
-    // Сабмит формы
-    this.form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.emitter.emit('next', this.getOrderData());
+    this.form.addEventListener('submit', (evt) => {
+      evt.preventDefault();
+      this.touched.submitted = true;
+      const data = this.getOrderData();
+      this.onNextHandler?.(data);
     });
   }
 
-  private emitChange() {
-    this.emitter.emit('change', this.getOrderData());
-  }
-
-  private getPayment(): 'online' | 'cash' | '' {
-    // приоритет — значение в скрытом инпуте, иначе — по активной кнопке
-    const fromHidden = this.paymentInput?.value ?? '';
-    if (fromHidden === 'online' || fromHidden === 'cash') return fromHidden as 'online' | 'cash';
-
-    if (this.onlineButton?.classList.contains('button_alt-active')) return 'online';
-    if (this.cashButton?.classList.contains('button_alt-active')) return 'cash';
+  private getPayment(): PaymentMaybe {
+    const val = (this.paymentInput.value ?? '').trim();
+    if (val === 'online' || val === 'cash') return val;
     return '';
   }
 
-  private setPayment(type: 'online' | 'cash') {
-    if (this.paymentInput) this.paymentInput.value = type;
-    this.setActivePayment(type);
+  private setPayment(value: Payment): void {
+    this.paymentInput.value = value;
   }
 
-  private toggleInvalid(el: HTMLElement | null, invalid: boolean) {
-    if (!el) return;
-    el.classList.toggle('is-invalid', invalid);
-    // если рядом есть error-box — покажем/скроем по наличию текста
-    const err = (el.querySelector('.form__error') || el.querySelector('[data-error]')) as HTMLElement | null;
-    if (err) err.hidden = !invalid && !err.textContent;
+  private updatePaymentButtons(): void {
+    const current = this.getPayment();
+    this.btnOnline?.classList.toggle('button_alt-active', current === 'online');
+    this.btnCash?.classList.toggle('button_alt-active', current === 'cash');
   }
 
-  private setActivePayment(type: 'online' | 'cash') {
-    const cls = 'button_alt-active';
-    if (this.onlineButton) {
-      this.onlineButton.classList.toggle(cls, type === 'online');
-      this.onlineButton.setAttribute('aria-pressed', String(type === 'online'));
-    }
-    if (this.cashButton) {
-      this.cashButton.classList.toggle(cls, type === 'cash');
-      this.cashButton.setAttribute('aria-pressed', String(type === 'cash'));
-    }
+  private emitChange(): void {
+    const data = this.getOrderData();
+    this.onChangeHandler?.(data);
   }
 }
-
-export default OrderView;

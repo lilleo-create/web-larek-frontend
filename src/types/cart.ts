@@ -1,5 +1,3 @@
-
-
 export interface ICartItem {
   id: string;
   title: string;

@@ -14,61 +14,73 @@ export class UserFormPresenter {
     private events: EventEmitter,
     private modal: Modal
   ) {
-    // Шаг 1: адрес + оплата — подписки НЕ через events, а напрямую на OrderView
-    this.view.onChange((data: Pick<IUserData, 'address' | 'payment'>) => {
+    this.view.onChange((data) => {
       const res = this.userModel.validateOrder(data as IUserData);
       this.view.showOrderErrors(res);
       this.view.setNextDisabled(!res.ok);
     });
-
-    this.view.onNext((data: Pick<IUserData, 'address' | 'payment'>) => {
+    
+    this.view.onNext((data) => {
       const res = this.userModel.validateOrder(data as IUserData);
       this.view.showOrderErrors(res);
       if (!res.ok) return;
       this.openContactModal();
     });
-
-    // Инициализация состояния формы шага 1
+    this.view.setNextDisabled(true);
     const initData = this.view.getOrderData();
     const initRes = this.userModel.validateOrder(initData as IUserData);
     this.view.showOrderErrors(initRes);
     this.view.setNextDisabled(!initRes.ok);
   }
 
-  // Шаг 2: контакты
   private openContactModal() {
     const contactView = new ContactView('#contacts');
     const formEl = contactView.render();
     this.modal.setContent(formEl);
     this.modal.open();
-
-    const applyContactsValidation = () => {
+  
+    let touchedEmail = false;
+    let touchedPhone = false;
+    let submitted = false;
+  
+    const validateAndRender = (opts: { forceShow?: boolean } = {}) => {
       const { email, phone } = contactView.getData();
-      const result = this.userModel.validateContacts(email, phone);
-      contactView.setErrors(result.errorText || '');
-      contactView.setSubmitDisabled(!result.ok);
+      const result = this.userModel.validateContacts({ email, phone });
+      const shouldShow = opts.forceShow || submitted || touchedEmail || touchedPhone;
+
+      const messages: string[] = [];
+      if (result.errors.email) messages.push(result.errors.email);
+      if (result.errors.phone) messages.push(result.errors.phone);
+
+      const errorText = shouldShow ? messages.join('; ') : '';
+      contactView.setErrors(errorText);
+      contactView.setSubmitDisabled(!result.valid);
+  
+      return result.valid;
     };
 
-    // У этих методов должен быть РОВНО один аргумент — handler
-    contactView.onEmailInput(applyContactsValidation);
-    contactView.onPhoneInput(applyContactsValidation);
-
-    // Инициализация
     contactView.setSubmitDisabled(true);
     contactView.setErrors('');
-    applyContactsValidation();
+    validateAndRender();
+    contactView.onEmailInput(() => {
+      touchedEmail = true;
+      validateAndRender();
+    });
+  
+    contactView.onPhoneInput(() => {
+      touchedPhone = true;
+      validateAndRender();
+    });
 
     contactView.onSubmit(() => {
-      applyContactsValidation();
-      const { email, phone } = contactView.getData();
-      const result = this.userModel.validateContacts(email, phone);
-      if (!result.ok) return;
-
+      submitted = true;
+      const ok = validateAndRender({ forceShow: true });
+      if (!ok) return;
+  
       this.openSuccessModal();
     });
   }
 
-  // Шаг 3: успех
   private openSuccessModal() {
     const container = document.createElement('div');
     const successView = new SuccessView(container);

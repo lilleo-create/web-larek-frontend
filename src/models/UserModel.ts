@@ -1,4 +1,3 @@
-// src/models/UserModel.ts
 import { IUserData } from '../types';
 
 export type OrderValidationResult = {
@@ -7,55 +6,52 @@ export type OrderValidationResult = {
   paymentOk: boolean;
   addressError?: string;
   paymentError?: string;
-  errors?: string; // общий текст (если нужен)
+  errors?: string;
+};
+
+export type ContactsValidationResult = {
+  valid: boolean;
+  errors: Record<string, string>;
 };
 
 export class UserModel {
-  // Валидация шага "адрес + оплата"
-  validateOrder(data: IUserData): OrderValidationResult {
+  validateOrder(data: Pick<IUserData, 'address' | 'payment'>): OrderValidationResult {
     const address = String(data.address ?? '').trim();
     const payment = String(data.payment ?? '').trim();
 
-    const addressOk = address.length >= 10; // мягкое правило: не короче 10 символов
+    // Адрес валиден, если НЕ пустой
+    const addressOk = address.length > 0;
     const paymentOk = payment === 'online' || payment === 'cash';
 
     return {
       ok: addressOk && paymentOk,
       addressOk,
       paymentOk,
-      addressError: addressOk ? '' : 'Введите адрес (не короче 10 символов).',
-      paymentError: paymentOk ? '' : 'Выберите способ оплаты.',
-      errors: !addressOk
-        ? 'Проверьте адрес'
-        : !paymentOk
-        ? 'Выберите способ оплаты'
-        : '',
+      addressError: addressOk ? '' : 'Введите адрес',
+      paymentError: paymentOk ? '' : 'Выберите способ оплаты',
+      errors: '',
     };
   }
 
-  // Валидация шага "контакты"
-  validateContacts(data: IUserData): {
-    ok: boolean;
-    emailOk: boolean;
-    phoneOk: boolean;
-    errorText: string;
-  } {
-    const email = String(data.email ?? '').trim();
-    const phone = String(data.phone ?? '').trim();
+  validateContacts(data: Pick<IUserData, 'email' | 'phone'>): ContactsValidationResult {
+    const errors: Record<string, string> = {};
+  
+    const email = (data.email ?? '').trim();
+    const phoneRaw = (data.phone ?? '').trim();
 
-    // простые, но достаточные проверки
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    const isPhone = /^\+?\d[\d\s\-()]{7,}$/.test(phone);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Введите корректный email';
+    }
 
+    const digits = phoneRaw.replace(/\D/g, '');
+
+    if (digits.length < 11 || digits.length > 11) {
+      errors.phone = 'Введите корректный телефон';
+    }
+  
     return {
-      ok: isEmail && isPhone,
-      emailOk: isEmail,
-      phoneOk: isPhone,
-      errorText: !isEmail
-        ? 'Введите корректный email'
-        : !isPhone
-        ? 'Введите корректный телефон'
-        : '',
+      valid: Object.keys(errors).length === 0,
+      errors,
     };
   }
 }
