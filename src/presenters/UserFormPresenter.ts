@@ -1,100 +1,103 @@
-import { IUserData } from '../types';
+// src/presenters/UserFormPresenter.ts
 import { EventEmitter } from '../components/base/events';
-import OrderView from '../components/views/OrderView';
 import Modal from '../components/views/ModalView';
-import { SuccessView } from '../components/views/SuccessView';
+import OrderView from '../components/views/OrderView';
+import type { OrderValidationResult } from '../models/UserModel';
 import { ContactView } from '../components/views/ContactView';
-import UserModel from '../models/UserModel';
+import { SuccessView } from '../components/views/SuccessView';
 
 export class UserFormPresenter {
-  private userModel = new UserModel();
+  // шаг 1: ждём клик "Далее"
+  private awaitingNext = false;
+  // шаг 2: ждём клик "Оплатить"
+  private awaitingPay  = false;
 
   constructor(
-    private view: OrderView,
+    private orderView: OrderView,
     private events: EventEmitter,
     private modal: Modal
   ) {
-    this.view.onChange((data) => {
-      const res = this.userModel.validateOrder(data as IUserData);
-      this.view.showOrderErrors(res);
-      this.view.setNextDisabled(!res.ok);
+    // === ШАГ 1: адрес + оплата ===
+    this.orderView.onChange((data) => {
+      this.events.emit('user:update', data);
+      this.events.emit('user:validate:order');
     });
-    
-    this.view.onNext((data) => {
-      const res = this.userModel.validateOrder(data as IUserData);
-      this.view.showOrderErrors(res);
-      if (!res.ok) return;
-      this.openContactModal();
+
+    this.orderView.onNext(() => {
+      this.awaitingNext = true;
+      this.events.emit('user:validate:order');
     });
-    this.view.setNextDisabled(true);
-    const initData = this.view.getOrderData();
-    const initRes = this.userModel.validateOrder(initData as IUserData);
-    this.view.showOrderErrors(initRes);
-    this.view.setNextDisabled(!initRes.ok);
+
+    this.events.on('user:validated:order', (res: OrderValidationResult) => {
+      const ok = res.addressOk && res.paymentOk;
+      this.orderView.showOrderErrors(res);
+      this.orderView.setNextDisabled(!ok);
+      if (ok && this.awaitingNext) {
+        this.awaitingNext = false;
+        this.openContacts();
+      }
+    });
   }
 
-  private openContactModal() {
-    const contactView = new ContactView('#contacts');
-    const formEl = contactView.render();
-    this.modal.setContent(formEl);
-    this.modal.open();
-  
-    let touchedEmail = false;
-    let touchedPhone = false;
-    let submitted = false;
-  
-    const validateAndRender = (opts: { forceShow?: boolean } = {}) => {
-      const { email, phone } = contactView.getData();
-      const result = this.userModel.validateContacts({ email, phone });
-      const shouldShow = opts.forceShow || submitted || touchedEmail || touchedPhone;
+  // === ШАГ 2: контакты ===
+  private openContacts() {
+    const tpl = document.querySelector<HTMLTemplateElement>('#contacts');
+    if (!tpl) throw new Error('Template #contacts not found');
 
-      const messages: string[] = [];
-      if (result.errors.email) messages.push(result.errors.email);
-      if (result.errors.phone) messages.push(result.errors.phone);
+    const form = tpl.content.firstElementChild!.cloneNode(true) as HTMLFormElement;
+    const contactView = new ContactView(form, this.events);
 
-      const errorText = shouldShow ? messages.join('; ') : '';
-      contactView.setErrors(errorText);
-      contactView.setSubmitDisabled(!result.valid);
-  
-      return result.valid;
+    // вставляем форму в модалку
+    this.modal.setContent(form);
+
+    // любое изменение полей -> обновляем модель и просим валидацию,
+    // НО переход вперёд делаем только по submit (см. ниже)
+    form.addEventListener('input', () => {
+      const email = (form.querySelector('input[name="email"]') as HTMLInputElement)?.value?.trim() || '';
+      const phone = (form.querySelector('input[name="phone"]') as HTMLInputElement)?.value?.trim() || '';
+      const nameEl = form.querySelector('input[name="name"]') as HTMLInputElement | null;
+      const patch: any = { email, phone };
+      if (nameEl) patch.name = (nameEl.value ?? '').trim();
+      this.events.emit('user:update', patch);
+      this.events.emit('user:validate:contacts');
+    });
+
+    // клик "Оплатить": только ставим флаг и запрашиваем валидацию
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.awaitingPay = true;
+      this.events.emit('user:validate:contacts');
+    });
+
+    // единый обработчик результата контактов
+    const onValidatedContacts = (res: { ok: boolean; errors?: Record<string,string> }) => {
+      contactView.setSubmitEnabled(res.ok);
+      contactView.showErrors(res.errors || {});
+      // переходим на успех ТОЛЬКО если пользователь нажал "Оплатить"
+      if (res.ok && this.awaitingPay) {
+        this.awaitingPay = false;
+        // отписываемся, чтобы не плодить обработчики при повторных открытиях
+        this.events.off('user:validated:contacts', onValidatedContacts);
+        this.openSuccess();
+      }
     };
 
-    contactView.setSubmitDisabled(true);
-    contactView.setErrors('');
-    validateAndRender();
-    contactView.onEmailInput(() => {
-      touchedEmail = true;
-      validateAndRender();
-    });
-  
-    contactView.onPhoneInput(() => {
-      touchedPhone = true;
-      validateAndRender();
-    });
-
-    contactView.onSubmit(() => {
-      submitted = true;
-      const ok = validateAndRender({ forceShow: true });
-      if (!ok) return;
-  
-      this.openSuccessModal();
-    });
+    this.events.on('user:validated:contacts', onValidatedContacts);
   }
 
-  private openSuccessModal() {
-    const container = document.createElement('div');
-    const successView = new SuccessView(container);
-    successView.render('Заказ оформлен', 'Спасибо за покупку!');
+  // === УСПЕХ ===
+  private openSuccess() {
+    const box = document.createElement('div');
+    const view = new SuccessView(box);
+    view.render('Заказ оформлен', 'Спасибо за покупку!');
 
-    successView.onClose((): void => {
+    box.addEventListener('success:close', () => {
       this.modal.close();
       this.events.emit('cart:clear');
-      this.events.emit('ui:scrollTop');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    this.modal.setContent(container);
+    this.modal.setContent(box);
     this.modal.open();
   }
 }
-
-export default UserFormPresenter;

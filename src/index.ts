@@ -8,6 +8,7 @@ import { CatalogView } from './components/views/CatalogView';
 import { CartView } from './components/views/CartView';
 import Modal from './components/views/ModalView';
 import HeaderView from './components/views/HeaderView';
+import { UserModel, OrderValidationResult } from './models/UserModel';
 
 import { CartPresenter } from './presenters/CartPresenter';
 import { ProductPresenter } from './presenters/ProductPresenter';
@@ -46,6 +47,7 @@ const productPresenter = new ProductPresenter(
   modal,
   events
 );
+const userModel = new UserModel(events);
 
 // =============== СОБЫТИЯ UI/APP ===============
 events.on('cart:count', ({ count }: { count: number }) => {

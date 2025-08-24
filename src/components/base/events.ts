@@ -6,7 +6,14 @@ type EmitterEvent = {
     eventName: string,
     data: unknown
 };
-
+declare global {
+    interface Window {
+      __LAREK_DBG?: boolean;
+      bus?: EventEmitter;
+    }
+  }
+  
+  const DBG = () => typeof window !== 'undefined' && window.__LAREK_DBG === true;
 export interface IEvents {
     on<T extends object>(event: EventName, callback: (data: T) => void): void;
     emit<T extends object>(event: string, data?: T): void;
@@ -19,7 +26,7 @@ export interface IEvents {
  * или слушать события по шаблону например
  */
 export class EventEmitter implements IEvents {
-    _events: Map<EventName, Set<Subscriber>>;
+    _events: Map<EventName, Set<Subscriber>>;   
 
     constructor() {
         this._events = new Map<EventName, Set<Subscriber>>();

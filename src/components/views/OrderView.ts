@@ -1,7 +1,10 @@
 import type { OrderValidationResult } from '../../models/UserModel';
 
-type Payment = 'online' | 'cash';
+type Payment = 'card' | 'cash';
 type PaymentMaybe = Payment | '';
+
+type OrderErrors = Partial<Record<'address' | 'payment', string>>;
+export interface Dummy { ok: boolean; errors: OrderErrors; } // не используется, просто чтоб не ругался экспорт
 
 export default class OrderView {
   private form!: HTMLFormElement;
@@ -13,9 +16,6 @@ export default class OrderView {
   private btnCash!: HTMLButtonElement | null;
   private nextBtn!: HTMLButtonElement | null;
   private errorEl!: HTMLElement | null;
-  
-
-  private touched = { address: false, payment: false, submitted: false };
 
   private onChangeHandler?: (data: { address: string; payment: PaymentMaybe }) => void;
   private onNextHandler?: (data: { address: string; payment: PaymentMaybe }) => void;
@@ -24,22 +24,23 @@ export default class OrderView {
     const root = document.querySelector(selector);
     if (!root) throw new Error(`OrderView: root not found by selector ${selector}`);
 
+    let form: HTMLFormElement | null = null;
     if (root instanceof HTMLTemplateElement) {
       const tplForm = root.content.querySelector('form');
       if (!tplForm) throw new Error('OrderView: form not found in template');
-      this.form = tplForm.cloneNode(true) as HTMLFormElement;
+      form = tplForm.cloneNode(true) as HTMLFormElement;
     } else {
-      const maybeForm = root.matches('form') ? root : root.querySelector('form');
-      if (!maybeForm) throw new Error('OrderView: form not found');
-      this.form = maybeForm as HTMLFormElement;
+      form = (root.matches('form') ? root : root.querySelector('form')) as HTMLFormElement | null;
+      if (!form) throw new Error('OrderView: form not found');
     }
+    this.form = form;
 
     this.addressInput = this.form.querySelector('input[name="address"]') as HTMLInputElement;
     this.paymentInput = this.form.querySelector('input[name="payment"]') as HTMLInputElement;
+
     this.btnOnline = this.form.querySelector<HTMLButtonElement>('button[name="card"]');
-    this.btnCash = this.form.querySelector<HTMLButtonElement>('button[name="cash"]');
-    this.nextBtn = this.form.querySelector<HTMLButtonElement>('[data-next="contacts"]');
-    
+    this.btnCash   = this.form.querySelector<HTMLButtonElement>('button[name="cash"]');
+    this.nextBtn   = this.form.querySelector<HTMLButtonElement>('[data-next="contacts"]');
 
     this.errorEl =
       this.form.querySelector<HTMLElement>('.form__errors') ||
@@ -48,6 +49,16 @@ export default class OrderView {
     if (!this.addressInput || !this.paymentInput) {
       throw new Error('OrderView: required inputs not found');
     }
+
+    if (!this.errorEl) {
+      this.errorEl = document.createElement('span');
+      this.errorEl.className = 'form__errors';
+      (this.form.querySelector('.modal__actions') ?? this.form).appendChild(this.errorEl);
+    }
+
+    if (this.btnOnline) this.btnOnline.type = 'button';
+    if (this.btnCash)   this.btnCash.type   = 'button';
+
     this.updatePaymentButtons();
     this.initListeners();
   }
@@ -70,66 +81,56 @@ export default class OrderView {
       payment: this.getPayment(),
     };
   }
-
   showOrderErrors(res: OrderValidationResult): void {
-  if (!this.errorEl) return;
+    if (!this.errorEl) return;
 
-  const interacted =
-    this.touched.address || this.touched.payment || this.touched.submitted;
+    const msg = !res.addressOk
+      ? (res.addressError || 'Укажите адрес')
+      : (!res.paymentOk ? 'Выберите способ оплаты' : '');
 
-  if (!interacted) {
-    this.errorEl.textContent = '';
-    return;
+    this.errorEl.textContent = msg;
+    this.errorEl.style.display = msg ? 'block' : 'none';
+  }
+
+  public setNextDisabled(disabled: boolean): void {
+    if (!this.nextBtn) return;
+    this.nextBtn.disabled = disabled;
+    if (disabled) {
+      this.nextBtn.setAttribute('disabled', '');
+    } else {
+      this.nextBtn.removeAttribute('disabled');
+    }
   }
   
-  if (!res.addressOk) {
-    this.errorEl.textContent = res.addressError || 'Введите адрес';
-  } else if (!res.paymentOk) {
-    this.errorEl.textContent = 'Выберите способ оплаты';
-  } else {
-    this.errorEl.textContent = '';
-  }
-
-  this.updatePaymentButtons();
-}
-public setNextDisabled(disabled: boolean): void {
-  if (this.nextBtn) this.nextBtn.disabled = disabled;
-}
-
-  // ===== внутреннее =====
 
   private initListeners(): void {
-    this.btnOnline?.addEventListener('click', () => {
-      this.touched.payment = true;
-      this.setPayment('online');
+    this.btnOnline?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      this.setPayment('card');
       this.updatePaymentButtons();
       this.emitChange();
     });
 
-    this.btnCash?.addEventListener('click', () => {
-      this.touched.payment = true;
+    this.btnCash?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
       this.setPayment('cash');
       this.updatePaymentButtons();
       this.emitChange();
     });
 
     this.addressInput.addEventListener('input', () => {
-      this.touched.address = true;
       this.emitChange();
     });
 
     this.form.addEventListener('submit', (evt) => {
       evt.preventDefault();
-      this.touched.submitted = true;
-      const data = this.getOrderData();
-      this.onNextHandler?.(data);
+      this.onNextHandler?.(this.getOrderData());
     });
   }
 
   private getPayment(): PaymentMaybe {
     const val = (this.paymentInput.value ?? '').trim();
-    if (val === 'online' || val === 'cash') return val;
-    return '';
+    return val === 'card' || val === 'cash' ? val : '';
   }
 
   private setPayment(value: Payment): void {
@@ -138,7 +139,7 @@ public setNextDisabled(disabled: boolean): void {
 
   private updatePaymentButtons(): void {
     const current = this.getPayment();
-    this.btnOnline?.classList.toggle('button_alt-active', current === 'online');
+    this.btnOnline?.classList.toggle('button_alt-active', current === 'card');
     this.btnCash?.classList.toggle('button_alt-active', current === 'cash');
   }
 
