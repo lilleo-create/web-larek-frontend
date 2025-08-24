@@ -4,7 +4,7 @@ type Payment = 'card' | 'cash';
 type PaymentMaybe = Payment | '';
 
 type OrderErrors = Partial<Record<'address' | 'payment', string>>;
-export interface Dummy { ok: boolean; errors: OrderErrors; } // не используется, просто чтоб не ругался экспорт
+export interface Dummy { ok: boolean; errors: OrderErrors; }
 
 export default class OrderView {
   private form!: HTMLFormElement;
